@@ -7,6 +7,9 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\JobDescriptionController;
 use App\Http\Controllers\Api\PositionController;
 use App\Http\Controllers\Api\ApplicantController;
+use App\Http\Controllers\Api\LeadController;
+use App\Http\Controllers\Api\OpportunityController;
+use App\Http\Controllers\Api\NoteController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -114,4 +117,85 @@ Route::middleware('auth:sanctum')->group(function () {
         '/applicants/{id}',
         [ApplicantController::class, 'destroy']
     )->middleware('perm:talent-acquisition.applicants.delete');
+
+
+    // Leads
+    Route::get(
+        '/leads',
+        [LeadController::class, 'index']
+    )->middleware('perm:business.leads.view');
+
+    Route::post(
+        '/leads',
+        [LeadController::class, 'store']
+    )->middleware('perm:business.leads.add');
+
+    Route::get(
+        '/leads/{id}',
+        [LeadController::class, 'show']
+    )->middleware('perm:business.leads.view');
+
+    Route::put(
+        '/leads/{id}',
+        [LeadController::class, 'update']
+    )->middleware('perm:business.leads.edit');
+
+    Route::delete(
+        '/leads/{id}',
+        [LeadController::class, 'destroy']
+    )->middleware('perm:business.leads.delete');
+
+
+    // Opportunities
+    Route::get(
+        '/leads/{leadId}/opportunities',
+        [OpportunityController::class, 'index']
+    )->middleware('perm:business.leads.view');
+
+    Route::post(
+        '/leads/{leadId}/opportunities',
+        [OpportunityController::class, 'store']
+    )->middleware('perm:business.leads.add');
+
+    Route::get(
+        '/opportunities/{id}',
+        [OpportunityController::class, 'show']
+    )->middleware('perm:business.leads.view');
+
+    Route::put(
+        '/opportunities/{id}',
+        [OpportunityController::class, 'update']
+    )->middleware('perm:business.leads.edit');
+
+    Route::delete(
+        '/opportunities/{id}',
+        [OpportunityController::class, 'destroy']
+    )->middleware('perm:business.leads.delete');
+    
+
+    // Notes
+    Route::get(
+        '/opportunities/{opportunityId}/notes',
+        [NoteController::class, 'index']
+    )->middleware('perm:business.leads.view');
+
+    Route::post(
+        '/opportunities/{opportunityId}/notes',
+        [NoteController::class, 'store']
+    )->middleware('perm:business.leads.add');
+
+    Route::get(
+        '/notes/{id}',
+        [NoteController::class, 'show']
+    )->middleware('perm:business.leads.view');
+
+    Route::put(
+        '/notes/{id}',
+        [NoteController::class, 'update']
+    )->middleware('perm:business.leads.edit');
+
+    Route::delete(
+        '/notes/{id}',
+        [NoteController::class, 'destroy']
+    )->middleware('perm:business.leads.delete');
 });
