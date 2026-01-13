@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class LeadController extends Controller
 {
     /**
      * GET /api/leads
+     * Only non-converted leads
      */
     public function index(Request $request)
     {
@@ -26,6 +26,10 @@ class LeadController extends Controller
         ]);
     }
 
+    /**
+     * GET /api/clients
+     * Only converted leads (clients)
+     */
     public function clients(Request $request)
     {
         $clients = Lead::with('opportunities.notes')
@@ -53,9 +57,9 @@ class LeadController extends Controller
             'city'              => 'nullable|string|max:100',
             'country'           => 'nullable|string|max:100',
 
-            // POC
+            // POC (email UNIQUE)
             'poc_name'          => 'required|string|max:255',
-            'poc_email'         => 'nullable|email',
+            'poc_email'         => 'nullable|email|unique:leads,poc_email',
             'poc_phone'         => 'nullable|string|max:20',
             'poc_linkedin'      => 'nullable|url',
 
@@ -63,9 +67,9 @@ class LeadController extends Controller
             'stage'             => 'nullable|string|max:100',
         ]);
 
-        // Auto lead code (L012)
-        $lastId = Lead::max('id') + 1;
-        $validated['lead_code'] = 'L' . str_pad($lastId, 3, '0', STR_PAD_LEFT);
+        // Auto lead code (L001 style)
+        $nextId = (Lead::max('id') ?? 0) + 1;
+        $validated['lead_code'] = 'L' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
         $validated['stage'] ??= 'Requirement';
 
         $lead = Lead::create($validated);
@@ -80,7 +84,7 @@ class LeadController extends Controller
     /**
      * GET /api/leads/{id}
      */
-    public function show($id)
+    public function show(int $id)
     {
         $lead = Lead::with('opportunities.notes')->find($id);
 
@@ -100,7 +104,7 @@ class LeadController extends Controller
     /**
      * PUT /api/leads/{id}
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id)
     {
         $lead = Lead::find($id);
 
@@ -120,9 +124,9 @@ class LeadController extends Controller
             'city'             => 'nullable|string|max:100',
             'country'          => 'nullable|string|max:100',
 
-            // POC
+            // POC (ignore current lead ID)
             'poc_name'         => 'sometimes|required|string|max:255',
-            'poc_email'        => 'nullable|email',
+            'poc_email'        => 'nullable|email|unique:leads,poc_email,' . $lead->id,
             'poc_phone'        => 'nullable|string|max:20',
             'poc_linkedin'     => 'nullable|url',
 
@@ -142,7 +146,7 @@ class LeadController extends Controller
     /**
      * DELETE /api/leads/{id}
      */
-    public function destroy($id)
+    public function destroy(int $id)
     {
         $lead = Lead::find($id);
 
@@ -183,16 +187,25 @@ class LeadController extends Controller
                     continue;
                 }
 
-                $lastId = Lead::max('id') + 1;
-                $leadCode = 'L' . str_pad($lastId, 3, '0', STR_PAD_LEFT);
+                // 🔐 Skip duplicate poc_email
+                if (!empty($row['poc_email'])) {
+                    $exists = Lead::where('poc_email', $row['poc_email'])->exists();
+                    if ($exists) {
+                        $skipped++;
+                        continue;
+                    }
+                }
+
+                $nextId = (Lead::max('id') ?? 0) + 1;
+                $leadCode = 'L' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
 
                 Lead::create([
-                    'lead_code'         => $leadCode,
-                    'company_name'      => $row['organization_name'],
-                    'company_website'   => $row['company_website'] ?? null,
-                    'company_linkedin'  => $row['company_linkedin'] ?? null,
-                    'city'              => $row['city'] ?? null,
-                    'country'           => $row['country'] ?? null,
+                    'lead_code'        => $leadCode,
+                    'company_name'     => $row['organization_name'],
+                    'company_website'  => $row['company_website'] ?? null,
+                    'company_linkedin' => $row['company_linkedin'] ?? null,
+                    'city'             => $row['city'] ?? null,
+                    'country'          => $row['country'] ?? null,
 
                     'tagline' => collect([
                         $row['tag_1'] ?? null,
@@ -243,6 +256,9 @@ class LeadController extends Controller
         }
     }
 
+    /**
+     * POST /api/leads/{id}/convert
+     */
     public function convert(int $id)
     {
         $lead = Lead::find($id);
@@ -276,5 +292,4 @@ class LeadController extends Controller
             ]
         ]);
     }
-
 }
