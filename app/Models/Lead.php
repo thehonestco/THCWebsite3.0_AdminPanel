@@ -9,12 +9,21 @@ class Lead extends Model
     protected $fillable = [
         'lead_code',
         'company_name',
+        'company_website',
+        'company_linkedin',
         'tagline',
-        'name',
-        'email',
-        'phone',
+        'tags',
+        'city',
+        'country',
+        'poc_name',
+        'poc_email',
+        'poc_phone',
+        'poc_linkedin',
         'source',
-        'stage'
+        'stage',
+        'is_converted',
+        'converted_at',
+        'client_id',
     ];
 
     public function opportunities()
