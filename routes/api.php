@@ -22,10 +22,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/permissions', [PermissionController::class, 'myPermissions']);
 
     // Create User (permission based)
+    Route::get(
+        '/users',
+        [UserController::class, 'index']
+    )->middleware('perm:bottom-menu.user-management.view');
     Route::post(
         '/users',
         [UserController::class, 'store']
     )->middleware('perm:bottom-menu.user-management.add');
+    Route::get(
+        '/users/{id}',
+        [UserController::class, 'show']
+    )->middleware('perm:bottom-menu.user-management.view');
+    Route::put(
+        '/users/{id}',
+        [UserController::class, 'update']
+    )->middleware('perm:bottom-menu.user-management.edit');
     Route::delete(
         '/users/{id}',
         [UserController::class, 'destroy']
@@ -144,6 +156,18 @@ Route::middleware('auth:sanctum')->group(function () {
         '/leads/{id}',
         [LeadController::class, 'destroy']
     )->middleware('perm:business.leads.delete');
+    Route::post(
+        '/leads/bulk-upload',
+        [LeadController::class, 'bulkUpload']
+    )->middleware('perm:business.leads.add');
+    Route::post(
+        '/leads/{id}/convert',
+        [LeadController::class, 'convert']
+    )->middleware('perm:business.leads.edit');
+        Route::get(
+        '/clients',
+        [LeadController::class, 'clients']
+    )->middleware('perm:business.clients.view');
 
 
     // Opportunities
