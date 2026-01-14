@@ -48,30 +48,62 @@ class LeadController extends Controller
      */
     public function store(Request $request)
     {
+        // Normalize empty email
+        if ($request->has('poc_email') && $request->poc_email === '') {
+            $request->merge(['poc_email' => null]);
+        }
+
+        /**
+         * 🔴 STEP 1: Manual duplicate email check (BEFORE DB HIT)
+         */
+        if (
+            $request->filled('poc_email') &&
+            Lead::where('poc_email', $request->poc_email)->exists()
+        ) {
+            return response()->json([
+                'message' => 'Validation error',
+                'errors' => [
+                    'poc_email' => [
+                        'This email is already associated with another lead.'
+                    ]
+                ]
+            ], 422);
+        }
+
+        /**
+         * STEP 2: Normal validation
+         */
         $validated = $request->validate([
-            'company_name'      => 'required|string|max:255',
-            'company_website'   => 'nullable|url',
-            'company_linkedin'  => 'nullable|url',
-            'tagline'           => 'nullable|string|max:255',
-            'tags'              => 'nullable|string',
-            'city'              => 'nullable|string|max:100',
-            'country'           => 'nullable|string|max:100',
+            'company_name' => 'required|string|max:255',
 
-            // POC (email UNIQUE)
-            'poc_name'          => 'required|string|max:255',
-            'poc_email'         => 'nullable|email|unique:leads,poc_email',
-            'poc_phone'         => 'nullable|string|max:20',
-            'poc_linkedin'      => 'nullable|url',
+            'poc_name'  => 'required|string|max:255',
+            'poc_email' => 'nullable|email',
+            'poc_phone' => 'nullable|string|max:20',
 
-            'source'            => 'nullable|string|max:255',
-            'stage'             => 'nullable|string|max:100',
+            'company_website'  => 'nullable|url',
+            'company_linkedin' => 'nullable|url',
+            'city'             => 'nullable|string|max:100',
+            'country'          => 'nullable|string|max:100',
+            'tags'             => 'nullable|string',
+            'source'           => 'nullable|string|max:255',
+            'stage'            => 'nullable|string|max:100',
         ]);
 
-        // Auto lead code (L001 style)
-        $nextId = (Lead::max('id') ?? 0) + 1;
-        $validated['lead_code'] = 'L' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
-        $validated['stage'] ??= 'Requirement';
+        /**
+         * STEP 3: Defaults
+         */
+        $validated['lead_code'] = 'L' . str_pad(
+            (Lead::max('id') ?? 0) + 1,
+            3,
+            '0',
+            STR_PAD_LEFT
+        );
 
+        $validated['stage'] = $validated['stage'] ?? 'Requirement';
+
+        /**
+         * STEP 4: Create lead (DB UNIQUE will never break now)
+         */
         $lead = Lead::create($validated);
 
         return response()->json([
