@@ -48,14 +48,10 @@ class LeadController extends Controller
      */
     public function store(Request $request)
     {
-        // Normalize empty email
         if ($request->has('poc_email') && $request->poc_email === '') {
             $request->merge(['poc_email' => null]);
         }
 
-        /**
-         * 🔴 STEP 1: Manual duplicate email check (BEFORE DB HIT)
-         */
         if (
             $request->filled('poc_email') &&
             Lead::where('poc_email', $request->poc_email)->exists()
@@ -70,28 +66,22 @@ class LeadController extends Controller
             ], 422);
         }
 
-        /**
-         * STEP 2: Normal validation
-         */
         $validated = $request->validate([
-            'company_name' => 'required|string|max:255',
-
-            'poc_name'  => 'required|string|max:255',
-            'poc_email' => 'nullable|email',
-            'poc_phone' => 'nullable|string|max:20',
-
+            'company_name'     => 'required|string|max:255',
             'company_website'  => 'nullable|url',
             'company_linkedin' => 'nullable|url',
             'city'             => 'nullable|string|max:100',
             'country'          => 'nullable|string|max:100',
             'tags'             => 'nullable|string',
             'source'           => 'nullable|string|max:255',
-            'stage'            => 'nullable|string|max:100',
+
+            // POC
+            'poc_name'   => 'required|string|max:255',
+            'poc_email'  => 'nullable|email',
+            'poc_phone'  => 'nullable|string|max:20',
+            'poc_linkedin' => 'nullable|url',
         ]);
 
-        /**
-         * STEP 3: Defaults
-         */
         $validated['lead_code'] = 'L' . str_pad(
             (Lead::max('id') ?? 0) + 1,
             3,
@@ -99,11 +89,8 @@ class LeadController extends Controller
             STR_PAD_LEFT
         );
 
-        $validated['stage'] = $validated['stage'] ?? 'Requirement';
+        $validated['stage'] = 'Fresh';
 
-        /**
-         * STEP 4: Create lead (DB UNIQUE will never break now)
-         */
         $lead = Lead::create($validated);
 
         return response()->json([
@@ -147,27 +134,44 @@ class LeadController extends Controller
             ], 404);
         }
 
+        if ($request->has('poc_email') && $request->poc_email === '') {
+            $request->merge(['poc_email' => null]);
+        }
+
+        if (
+            $request->filled('poc_email') &&
+            Lead::where('poc_email', $request->poc_email)
+                ->where('id', '!=', $lead->id)
+                ->exists()
+        ) {
+            return response()->json([
+                'message' => 'Validation error',
+                'errors' => [
+                    'poc_email' => [
+                        'This email is already associated with another lead.'
+                    ]
+                ]
+            ], 422);
+        }
+
         $validated = $request->validate([
             'company_name'     => 'sometimes|required|string|max:255',
             'company_website'  => 'nullable|url',
             'company_linkedin' => 'nullable|url',
-            'tagline'          => 'nullable|string|max:255',
-            'tags'             => 'nullable|string',
             'city'             => 'nullable|string|max:100',
             'country'          => 'nullable|string|max:100',
-
-            // POC (ignore current lead ID)
-            'poc_name'         => 'sometimes|required|string|max:255',
-            'poc_email'        => 'nullable|email|unique:leads,poc_email,' . $lead->id,
-            'poc_phone'        => 'nullable|string|max:20',
-            'poc_linkedin'     => 'nullable|url',
-
+            'tags'             => 'nullable|string',
             'source'           => 'nullable|string|max:255',
-            'stage'            => 'nullable|string|max:100',
+
+            // POC
+            'poc_name'   => 'sometimes|required|string|max:255',
+            'poc_email'  => 'nullable|email',
+            'poc_phone'  => 'nullable|string|max:20',
+            'poc_linkedin' => 'nullable|url',
         ]);
 
         $lead->update($validated);
-
+        
         return response()->json([
             'success' => true,
             'message' => 'Lead updated successfully',

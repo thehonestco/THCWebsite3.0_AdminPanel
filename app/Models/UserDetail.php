@@ -12,6 +12,7 @@ class UserDetail extends Model
         'designation',
         'department',
         'linkedin_url',
-        'tags'
+        'tags',
+        'type'
     ];
 }

@@ -26,7 +26,7 @@ class UserController extends Controller
         $query = User::query()
             ->with([
                 'roles:id,name',
-                'detail:id,user_id,phone'
+                'detail:id,user_id,phone,type'
             ]);
 
         /* ======================
@@ -68,7 +68,7 @@ class UserController extends Controller
                 'number' => $user->detail->phone ?? null,
 
                 'role' => $user->roles->first()->name ?? '-',
-                'type' => $user->roles->first()->name ?? '-',
+                'type' => $user->detail->type ?? null,
 
                 'status' => $user->trashed()
                     ? 'Deleted'
@@ -89,8 +89,8 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name'        => 'required|string|max:100',
-            'email'       => 'required|email|unique:users,email',
+            'name'     => 'required|string|max:100',
+            'email'    => 'required|email|unique:users,email',
             'password'    => 'required|min:8',
             'role_id'     => 'required|exists:roles,id',
 
@@ -100,6 +100,7 @@ class UserController extends Controller
             'department'  => 'nullable|string|max:100',
             'linkedin_url'=> 'nullable|url',
             'tags'        => 'nullable|string',
+            'type' => 'nullable|in:employed,freelancer',
 
             'permissions' => 'nullable|array',
             'permissions.*' => 'exists:permissions,id',
@@ -133,6 +134,7 @@ class UserController extends Controller
                 'department'   => $data['department'] ?? null,
                 'linkedin_url' => $data['linkedin_url'] ?? null,
                 'tags'         => $data['tags'] ?? null,
+                'type'         => $data['type'] ?? null,
             ]);
 
             // 3️⃣ ROLE
@@ -206,6 +208,7 @@ class UserController extends Controller
                     'department'   => $user->detail->department ?? null,
                     'linkedin_url' => $user->detail->linkedin_url ?? null,
                     'tags'         => $user->detail->tags ?? null,
+                    'type'         => $user->detail->type ?? null,
                 ],
 
                 'permissions' => $user->directPermissions->map(fn ($p) => [
@@ -229,8 +232,8 @@ class UserController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'name'        => 'required|string|max:100',
-            'email'       => 'required|email|unique:users,email,' . $user->id,
+            'name'  => 'sometimes|required|string|max:100',
+            'email' => 'sometimes|required|email|unique:users,email,' . $user->id,
             'password'    => 'nullable|min:8',
             'role_id'     => 'required|exists:roles,id',
 
@@ -240,6 +243,7 @@ class UserController extends Controller
             'department'  => 'nullable|string|max:100',
             'linkedin_url'=> 'nullable|url',
             'tags'        => 'nullable|string',
+            'type' => 'nullable|in:employed,freelancer',
 
             'permissions' => 'nullable|array',
             'permissions.*' => 'exists:permissions,id',
@@ -282,6 +286,7 @@ class UserController extends Controller
                     'department'   => $data['department'] ?? null,
                     'linkedin_url' => $data['linkedin_url'] ?? null,
                     'tags'         => $data['tags'] ?? null,
+                    'type'         => $data['type'] ?? null,
                 ]
             );
 

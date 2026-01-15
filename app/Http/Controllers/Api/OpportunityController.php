@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use Illuminate\Http\Request;
+use App\Services\LeadStatusService;
 
 class OpportunityController extends Controller
 {
@@ -53,6 +54,7 @@ class OpportunityController extends Controller
         ]);
 
         $opportunity = $lead->opportunities()->create($validated);
+        LeadStatusService::update($lead->id);
 
         return response()->json([
             'success' => true,
@@ -105,6 +107,7 @@ class OpportunityController extends Controller
         ]);
 
         $opportunity->update($validated);
+        LeadStatusService::update($opportunity->lead_id);
 
         return response()->json([
             'success' => true,
@@ -127,7 +130,10 @@ class OpportunityController extends Controller
             ], 404);
         }
 
+        $leadId = $opportunity->lead_id;
         $opportunity->delete();
+
+        LeadStatusService::update($leadId);
 
         return response()->json([
             'success' => true,

@@ -26,6 +26,22 @@ class Lead extends Model
         'client_id',
     ];
 
+    protected $casts = [
+        'is_converted' => 'boolean',
+    ];
+
+    public function getTagsAttribute($value)
+    {
+        if (!$value) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            'trim',
+            explode(',', $value)
+        )));
+    }
+
     public function opportunities()
     {
         return $this->hasMany(Opportunity::class);
