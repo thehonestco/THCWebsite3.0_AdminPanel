@@ -265,7 +265,7 @@ class LeadController extends Controller
                     'poc_linkedin' => $row['poc_linkedin'] ?? null,
 
                     'source' => $row['source'] ?? null,
-                    'stage'  => 'Requirement',
+                    'stage'  => 'Fresh',
                 ]);
 
                 $created++;
