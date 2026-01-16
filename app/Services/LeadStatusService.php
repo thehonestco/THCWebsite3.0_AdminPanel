@@ -7,94 +7,83 @@ use Carbon\Carbon;
 
 class LeadStatusService
 {
-    /**
-     * Decide lead stage based on opportunity statuses
-     */
     public static function calculate($opportunities): string
     {
         if ($opportunities->isEmpty()) {
             return 'Fresh';
         }
 
+        $total = $opportunities->count();
+
         $statuses = $opportunities
             ->pluck('status')
             ->filter()
             ->unique();
 
+        $filledCount = $opportunities
+            ->whereNotNull('status')
+            ->count();
+
         /**
-         * 🔥 HIGHEST PRIORITY
-         * If ANY opportunity is converted
+         * 🔥 CONVERT → CLIENT
          */
         if ($statuses->contains('convert')) {
             return 'Converted';
         }
 
         /**
-         * 🟢 Active opportunity stages
+         * 🟢 ACTIVE
          */
-        $active = [
-            'intro-call',
-            'requirement',
-            'proposal',
-        ];
+        $active = ['intro-call', 'requirement', 'proposal'];
 
         if ($statuses->intersect($active)->isNotEmpty()) {
             return 'Opportunity';
         }
 
         /**
-         * 🟡 All on hold
+         * 🟡 COLD
+         * Only when ALL opportunities are hold
          */
-        if ($statuses->every(fn ($s) => $s === 'hold')) {
+        if (
+            $filledCount === $total &&
+            $statuses->count() === 1 &&
+            $statuses->contains('hold')
+        ) {
             return 'Cold';
         }
 
         /**
-         * 🔴 All dropped
+         * 🔴 DROPPED
          */
-        if ($statuses->every(fn ($s) => $s === 'drop')) {
+        if (
+            $filledCount === $total &&
+            $statuses->count() === 1 &&
+            $statuses->contains('drop')
+        ) {
             return 'Dropped';
         }
 
         return 'Fresh';
     }
 
-    /**
-     * Update lead stage + convert to client if needed
-     */
     public static function update(int $leadId): void
     {
         $lead = Lead::with('opportunities')->find($leadId);
-
-        if (!$lead) {
-            return;
-        }
+        if (!$lead) return;
 
         $newStage = self::calculate($lead->opportunities);
 
-        /**
-         * 🔥 AUTO CONVERT LEAD → CLIENT
-         */
-        if (
-            $newStage === 'Converted' &&
-            !$lead->is_converted
-        ) {
+        if ($newStage === 'Converted' && !$lead->is_converted) {
             $lead->update([
                 'stage'        => 'Converted',
                 'is_converted' => true,
                 'converted_at' => Carbon::now(),
             ]);
-
             return;
         }
 
-        /**
-         * Normal stage update
-         */
         if ($lead->stage !== $newStage) {
-            $lead->update([
-                'stage' => $newStage
-            ]);
+            $lead->update(['stage' => $newStage]);
         }
     }
 }
