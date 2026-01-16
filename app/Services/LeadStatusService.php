@@ -9,60 +9,49 @@ class LeadStatusService
 {
     public static function calculate($opportunities): string
     {
+        // 1️⃣ No opportunities
         if ($opportunities->isEmpty()) {
             return 'Fresh';
         }
 
-        $total = $opportunities->count();
-
         $statuses = $opportunities
-            ->pluck('status')
+            ->pluck('stage')
             ->filter()
-            ->unique();
+            ->values();
 
-        $filledCount = $opportunities
-            ->whereNotNull('status')
-            ->count();
-
-        /**
-         * 🔥 CONVERT → CLIENT
-         */
+        // 2️⃣ CONVERT (highest priority)
         if ($statuses->contains('convert')) {
             return 'Converted';
         }
 
-        /**
-         * 🟢 ACTIVE
-         */
-        $active = ['intro-call', 'requirement', 'proposal'];
+        $activeStatuses = [
+            'intro-call',
+            'requirement',
+            'proposal',
+            'follow-up',
+        ];
 
-        if ($statuses->intersect($active)->isNotEmpty()) {
+        // 3️⃣ OPPORTUNITY
+        if ($statuses->intersect($activeStatuses)->isNotEmpty()) {
+            dd("1");
             return 'Opportunity';
         }
 
-        /**
-         * 🟡 COLD
-         * Only when ALL opportunities are hold
-         */
+        // 4️⃣ DROPPED (all dropped)
         if (
-            $filledCount === $total &&
-            $statuses->count() === 1 &&
-            $statuses->contains('hold')
+            $statuses->isNotEmpty() &&
+            $statuses->every(fn ($s) => $s === 'drop')
         ) {
-            return 'Cold';
-        }
-
-        /**
-         * 🔴 DROPPED
-         */
-        if (
-            $filledCount === $total &&
-            $statuses->count() === 1 &&
-            $statuses->contains('drop')
-        ) {
+            // dd("2");
             return 'Dropped';
         }
 
+        // 5️⃣ COLD
+        if ($statuses->contains('hold')) {
+            dd("3");
+            return 'Cold';
+        }
+dd("4");
         return 'Fresh';
     }
 
@@ -73,6 +62,7 @@ class LeadStatusService
 
         $newStage = self::calculate($lead->opportunities);
 
+        // 🔥 Lead → Client conversion
         if ($newStage === 'Converted' && !$lead->is_converted) {
             $lead->update([
                 'stage'        => 'Converted',
