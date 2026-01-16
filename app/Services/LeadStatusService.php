@@ -3,9 +3,13 @@
 namespace App\Services;
 
 use App\Models\Lead;
+use Carbon\Carbon;
 
 class LeadStatusService
 {
+    /**
+     * Decide lead stage based on opportunity statuses
+     */
     public static function calculate($opportunities): string
     {
         if ($opportunities->isEmpty()) {
@@ -17,33 +21,47 @@ class LeadStatusService
             ->filter()
             ->unique();
 
-        // 🔥 Highest priority
-        if ($statuses->contains('Convert')) {
+        /**
+         * 🔥 HIGHEST PRIORITY
+         * If ANY opportunity is converted
+         */
+        if ($statuses->contains('convert')) {
             return 'Converted';
         }
 
+        /**
+         * 🟢 Active opportunity stages
+         */
         $active = [
-            'Intro Call',
-            'Req. Gathering',
-            'Proposal',
-            'Follow Up',
+            'intro-call',
+            'requirement',
+            'proposal',
         ];
 
         if ($statuses->intersect($active)->isNotEmpty()) {
             return 'Opportunity';
         }
 
-        if ($statuses->every(fn ($s) => $s === 'Hold')) {
+        /**
+         * 🟡 All on hold
+         */
+        if ($statuses->every(fn ($s) => $s === 'hold')) {
             return 'Cold';
         }
 
-        if ($statuses->every(fn ($s) => $s === 'Dropped')) {
+        /**
+         * 🔴 All dropped
+         */
+        if ($statuses->every(fn ($s) => $s === 'drop')) {
             return 'Dropped';
         }
 
         return 'Fresh';
     }
 
+    /**
+     * Update lead stage + convert to client if needed
+     */
     public static function update(int $leadId): void
     {
         $lead = Lead::with('opportunities')->find($leadId);
@@ -54,8 +72,29 @@ class LeadStatusService
 
         $newStage = self::calculate($lead->opportunities);
 
+        /**
+         * 🔥 AUTO CONVERT LEAD → CLIENT
+         */
+        if (
+            $newStage === 'Converted' &&
+            !$lead->is_converted
+        ) {
+            $lead->update([
+                'stage'        => 'Converted',
+                'is_converted' => true,
+                'converted_at' => Carbon::now(),
+            ]);
+
+            return;
+        }
+
+        /**
+         * Normal stage update
+         */
         if ($lead->stage !== $newStage) {
-            $lead->update(['stage' => $newStage]);
+            $lead->update([
+                'stage' => $newStage
+            ]);
         }
     }
 }
