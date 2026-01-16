@@ -1,15 +1,23 @@
 <?php
 
+namespace App\Services;
+
+use App\Models\Lead;
+
 class LeadStatusService
 {
-    public static function calculate($opportunities)
+    public static function calculate($opportunities): string
     {
         if ($opportunities->isEmpty()) {
             return 'Fresh';
         }
 
-        $statuses = $opportunities->pluck('status')->unique();
+        $statuses = $opportunities
+            ->pluck('status')
+            ->filter()
+            ->unique();
 
+        // 🔥 Highest priority
         if ($statuses->contains('Convert')) {
             return 'Converted';
         }
@@ -36,10 +44,13 @@ class LeadStatusService
         return 'Fresh';
     }
 
-    public static function update(int $leadId)
+    public static function update(int $leadId): void
     {
         $lead = Lead::with('opportunities')->find($leadId);
-        if (!$lead) return;
+
+        if (!$lead) {
+            return;
+        }
 
         $newStage = self::calculate($lead->opportunities);
 
