@@ -53,6 +53,7 @@ class OpportunityController extends Controller
             'status'      => 'nullable|string|max:100',
         ]);
 
+        $validated['owner_name'] = $request->user()->name;        
         $opportunity = $lead->opportunities()->create($validated);
         LeadStatusService::update($lead->id);
 
@@ -106,6 +107,7 @@ class OpportunityController extends Controller
             'status'      => 'nullable|string|max:100',
         ]);
 
+        $validated['owner_name'] = $request->user()->name;
         $opportunity->update($validated);
         LeadStatusService::update($opportunity->lead_id);
 
