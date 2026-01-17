@@ -33,7 +33,6 @@ class LeadStatusService
 
         // 3️⃣ OPPORTUNITY
         if ($statuses->intersect($activeStatuses)->isNotEmpty()) {
-            dd("1");
             return 'Opportunity';
         }
 
@@ -42,16 +41,14 @@ class LeadStatusService
             $statuses->isNotEmpty() &&
             $statuses->every(fn ($s) => $s === 'drop')
         ) {
-            // dd("2");
             return 'Dropped';
         }
 
         // 5️⃣ COLD
         if ($statuses->contains('hold')) {
-            dd("3");
             return 'Cold';
         }
-dd("4");
+
         return 'Fresh';
     }
 
