@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\LeadBusinessDetail;
 
 class LeadController extends Controller
 {
@@ -34,6 +35,7 @@ class LeadController extends Controller
     {
         $clients = Lead::with('opportunities.notes')
             ->where('is_converted', true)
+            ->with('businessDetails')
             ->latest()
             ->paginate($request->get('per_page', 10));
 
@@ -134,10 +136,12 @@ class LeadController extends Controller
             ], 404);
         }
 
+        // Normalize empty email
         if ($request->has('poc_email') && $request->poc_email === '') {
             $request->merge(['poc_email' => null]);
         }
 
+        // Unique email check
         if (
             $request->filled('poc_email') &&
             Lead::where('poc_email', $request->poc_email)
@@ -154,6 +158,9 @@ class LeadController extends Controller
             ], 422);
         }
 
+        /**
+         * 🔹 Lead fields validation
+         */
         $validated = $request->validate([
             'company_name'     => 'sometimes|required|string|max:255',
             'company_website'  => 'nullable|url',
@@ -164,20 +171,45 @@ class LeadController extends Controller
             'source'           => 'nullable|string|max:255',
 
             // POC
-            'poc_name'   => 'sometimes|required|string|max:255',
-            'poc_email'  => 'nullable|email',
-            'poc_phone'  => 'nullable|string|max:20',
+            'poc_name'     => 'sometimes|required|string|max:255',
+            'poc_email'    => 'nullable|email',
+            'poc_phone'    => 'nullable|string|max:20',
             'poc_linkedin' => 'nullable|url',
+
+            // Business details (nested)
+            'business_details'               => 'nullable|array',
+            'business_details.business_name' => 'nullable|string|max:255',
+            'business_details.gst_number'    => 'nullable|string|max:50',
+            'business_details.pan_number'    => 'nullable|string|max:50',
+            'business_details.address'       => 'nullable|string',
         ]);
 
-        $lead->update($validated);
-        
+        /**
+         * 🔹 Update lead core data
+         */
+        $leadData = collect($validated)->except('business_details')->toArray();
+        $lead->update($leadData);
+
+        /**
+         * 🔹 Business details logic (ONLY FOR CLIENTS)
+         */
+        if (
+            $lead->is_converted &&
+            isset($validated['business_details'])
+        ) {
+            LeadBusinessDetail::updateOrCreate(
+                ['lead_id' => $lead->id],
+                $validated['business_details']
+            );
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Lead updated successfully',
-            'data' => $lead
+            'data' => $lead->load('businessDetails')
         ]);
     }
+
 
     /**
      * DELETE /api/leads/{id}

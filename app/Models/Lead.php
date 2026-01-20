@@ -46,4 +46,9 @@ class Lead extends Model
     {
         return $this->hasMany(Opportunity::class);
     }
+
+    public function businessDetails()
+    {
+        return $this->hasOne(LeadBusinessDetail::class);
+    }
 }
