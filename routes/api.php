@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\ApplicantController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\OpportunityController;
 use App\Http\Controllers\Api\NoteController;
+use App\Http\Controllers\Api\BankDetailController;
+use App\Http\Controllers\Api\InvoiceController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -156,15 +158,18 @@ Route::middleware('auth:sanctum')->group(function () {
         '/leads/{id}',
         [LeadController::class, 'destroy']
     )->middleware('perm:business.leads.delete');
+
     Route::post(
         '/leads/bulk-upload',
         [LeadController::class, 'bulkUpload']
     )->middleware('perm:business.leads.add');
+
     Route::post(
         '/leads/{id}/convert',
         [LeadController::class, 'convert']
     )->middleware('perm:business.leads.edit');
-        Route::get(
+    
+    Route::get(
         '/clients',
         [LeadController::class, 'clients']
     )->middleware('perm:business.clients.view');
@@ -222,4 +227,51 @@ Route::middleware('auth:sanctum')->group(function () {
         '/notes/{id}',
         [NoteController::class, 'destroy']
     )->middleware('perm:business.leads.delete');
+
+    // Bank Details
+    Route::get(
+        '/bank-details',
+        [BankDetailController::class, 'index']
+    )->middleware('perm:accounts.invoices.view');
+
+    Route::post(
+        '/bank-details',
+        [BankDetailController::class, 'store']
+    )->middleware('perm:accounts.invoices.add');
+
+    Route::get(
+        '/bank-details/{id}',
+        [BankDetailController::class, 'show']
+    )->middleware('perm:accounts.invoices.view');
+
+    Route::put(
+        '/bank-details/{id}',
+        [BankDetailController::class, 'update']
+    )->middleware('perm:accounts.invoices.edit');
+
+    Route::delete(
+        '/bank-details/{id}',
+        [BankDetailController::class, 'destroy']
+    )->middleware('perm:accounts.invoices.delete');
+
+    // Invoice
+    Route::get(
+        '/invoices',
+        [InvoiceController::class, 'index']
+    )->middleware('perm:accounts.invoices.view');
+
+    Route::post(
+        '/invoices',
+        [InvoiceController::class, 'store']
+    )->middleware('perm:accounts.invoices.add');
+
+    Route::get(
+        '/invoices/{id}',
+        [InvoiceController::class, 'show']
+    )->middleware('perm:accounts.invoices.view');
+
+    Route::delete(
+        '/invoices/{id}',
+        [InvoiceController::class, 'destroy']
+    )->middleware('perm:accounts.invoices.delete');
 });
