@@ -4,118 +4,111 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Position;
+use App\Models\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class PositionController extends Controller
 {
     /**
      * List Positions
      */
-    public function index(Request $request)
+    public function index()
     {
-        $query = Position::query()
-            ->with([
-                'jobDescription:id,title,about_job'
-            ])
-            ->withCount([
-                'applications as active_applicants' => function ($q) {
-                    $q->whereIn('stage', ['open','screening','interview','offer']);
-                }
-            ])
-            ->orderByDesc('id');
-
-        // Filters
-        if ($request->filled('job_description_id')) {
-            $query->where('job_description_id', $request->job_description_id);
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('source')) {
-            $query->where('source', $request->source);
-        }
-
-        if ($request->filled('job_type')) {
-            $query->where('job_type', $request->job_type);
-        }
-
-        if ($request->filled('work_mode')) {
-            $query->where('work_mode', $request->work_mode);
-        }
-
-        $positions = $query->paginate(10);
+        $positions = Position::with('jobDescription:id,title')
+            ->withCount('applications')
+            ->orderByDesc('id')
+            ->paginate(10);
 
         return response()->json([
             'success' => true,
-            'data' => $positions->through(function ($p) {
-                return [
-                    'id' => $p->id,
-                    'reference_code' => $p->reference_code,
-
-                    // JD info
-                    'title' => optional($p->jobDescription)->title,
-                    'subtitle' => str(optional($p->jobDescription)->about_job)->limit(60),
-
-                    'created_on' => $p->created_at->format('d/m/Y'),
-
-                    // Card fields
-                    'job_type' => $p->job_type,
-                    'nature' => $p->work_mode,
-                    'experience' => $p->experience_min && $p->experience_max
-                        ? "{$p->experience_min}–{$p->experience_max} Years"
-                        : null,
-
-                    'salary' => $p->salary_min && $p->salary_max
-                        ? "₹{$p->salary_min}–{$p->salary_max} LPA"
-                        : null,
-
-                    'stage' => ucfirst($p->status),
-                    'applicants' => $p->active_applicants,
-                ];
-            })
+            'data' => $positions
         ]);
     }
 
     /**
-     * Create Position
+     * Create Position (with optional applicants)
      */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
+            'position_name'      => 'required|string|max:255',
             'job_description_id' => 'required|exists:job_descriptions,id',
-            'organization_name'  => 'required|string|max:255',
-            'source'             => 'required|in:Referral,Inbound,Outbound',
-            'location'           => 'nullable|string|max:255',
-            'website_url'        => 'nullable|url|max:255',
-            'linkedin_url'       => 'nullable|url|max:255',
-            'tags'               => 'nullable|string',
-            'contact_name'       => 'nullable|string|max:255',
-            'contact_email'      => 'nullable|email|max:255',
-            'contact_phone'      => 'nullable|string|max:20',
-            'status'             => 'required|in:active,closed',
+            'job_type'           => 'required|in:Full Time,Part Time,Contract',
+            'work_mode'          => 'required|in:Onsite,Remote,Hybrid',
+
+            'experience_min'     => 'nullable|integer|min:0',
+            'experience_max'     => 'nullable|integer|gte:experience_min',
+
+            'salary_min'         => 'nullable|integer|min:0',
+            'salary_max'         => 'nullable|integer|gte:salary_min',
+
+            'status'             => 'required|in:open,closed',
+
+            // Existing applicants only
+            'applicant_ids'      => 'nullable|array',
+            'applicant_ids.*'    => 'exists:applicants,id',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation error',
                 'errors'  => $validator->errors()
             ], 422);
         }
 
-        $position = Position::create([
-            ...$validator->validated(),
-            'created_by' => auth()->id(),
-        ]);
+        DB::beginTransaction();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Position created successfully',
-            'data'    => $position
-        ], 201);
+        try {
+            /** @var Position $position */
+            $position = Position::create([
+                ...$request->only([
+                    'position_name',
+                    'job_description_id',
+                    'job_type',
+                    'work_mode',
+                    'experience_min',
+                    'experience_max',
+                    'salary_min',
+                    'salary_max',
+                    'status',
+                ]),
+                'created_by' => auth()->id(),
+            ]);
+
+            // ✅ Apply existing applicants (ENUM SAFE)
+            if ($request->filled('applicant_ids')) {
+                foreach ($request->applicant_ids as $applicantId) {
+                    $position->applications()->firstOrCreate(
+                        [
+                            'applicant_id' => $applicantId,
+                        ],
+                        [
+                            'stage' => 'open', // ✅ ENUM safe
+                            'created_by' => auth()->id(),
+                        ]
+                    );
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Position created successfully',
+                'data' => $position->load('applications.applicant')
+            ], 201);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage() // 👈 helpful in dev
+            ], 500);
+        }
     }
 
     /**
@@ -123,7 +116,10 @@ class PositionController extends Controller
      */
     public function show(int $id)
     {
-        $position = Position::find($id);
+        $position = Position::with([
+            'jobDescription',
+            'applications.applicant'
+        ])->find($id);
 
         if (!$position) {
             return response()->json([
@@ -153,22 +149,20 @@ class PositionController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'organization_name' => 'required|string|max:255',
-            'source'            => 'required|in:Referral,Inbound,Outbound',
-            'location'          => 'nullable|string|max:255',
-            'website_url'       => 'nullable|url|max:255',
-            'linkedin_url'      => 'nullable|url|max:255',
-            'tags'              => 'nullable|string',
-            'contact_name'      => 'nullable|string|max:255',
-            'contact_email'     => 'nullable|email|max:255',
-            'contact_phone'     => 'nullable|string|max:20',
-            'status'            => 'required|in:active,closed',
+            'position_name' => 'required|string|max:255',
+            'job_type'      => 'required|in:Full Time,Part Time,Contract',
+            'work_mode'     => 'required|in:Onsite,Remote,Hybrid',
+            'status'        => 'required|in:open,closed',
+
+            'experience_min' => 'nullable|integer|min:0',
+            'experience_max' => 'nullable|integer|gte:experience_min',
+            'salary_min'     => 'nullable|integer|min:0',
+            'salary_max'     => 'nullable|integer|gte:salary_min',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation error',
                 'errors'  => $validator->errors()
             ], 422);
         }
@@ -178,7 +172,7 @@ class PositionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Position updated successfully',
-            'data'    => $position
+            'data' => $position
         ]);
     }
 
@@ -187,7 +181,7 @@ class PositionController extends Controller
      */
     public function destroy(int $id)
     {
-        $position = Position::withTrashed()->where('id', $id)->first();
+        $position = Position::find($id);
 
         if (!$position) {
             return response()->json([
@@ -196,18 +190,71 @@ class PositionController extends Controller
             ], 404);
         }
 
-        if ($position->trashed()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Position already deleted'
-            ], 409);
-        }
-
         $position->delete();
 
         return response()->json([
             'success' => true,
             'message' => 'Position deleted successfully'
         ]);
+    }
+
+    /**
+     * Add existing applicants to a position
+     */
+    public function addApplicants(Request $request, int $id)
+    {
+        $position = Position::find($id);
+
+        if (!$position) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Position not found'
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'applicant_ids'   => 'required|array',
+            'applicant_ids.*' => 'exists:applicants,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($request->applicant_ids as $applicantId) {
+                $position->applications()->firstOrCreate(
+                    [
+                        'applicant_id' => $applicantId,
+                    ],
+                    [
+                        'stage' => 'open', // ✅ ENUM SAFE
+                        'created_by' => auth()->id(),
+                    ]
+                );
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Applicants added successfully',
+                'data' => $position->load('applications.applicant')
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

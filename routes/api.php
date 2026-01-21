@@ -104,6 +104,8 @@ Route::middleware('auth:sanctum')->group(function () {
         '/positions/{id}',
         [PositionController::class, 'destroy']
     )->middleware('perm:talent-acquisition.positions.delete');
+    Route::post('/positions/{id}/applicants', [PositionController::class, 'addApplicants'])
+    ->middleware('perm:talent-acquisition.positions.edit');
 
 
     // Applicant
@@ -131,6 +133,10 @@ Route::middleware('auth:sanctum')->group(function () {
         '/applicants/{id}',
         [ApplicantController::class, 'destroy']
     )->middleware('perm:talent-acquisition.applicants.delete');
+    Route::post(
+        '/applicants/{id}/positions',
+        [ApplicantController::class, 'addPositions']
+    )->middleware('perm:talent-acquisition.applicants.edit');
 
 
     // Leads
