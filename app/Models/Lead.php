@@ -51,4 +51,9 @@ class Lead extends Model
     {
         return $this->hasOne(LeadBusinessDetail::class);
     }
+
+    public function getBusinessNameAttribute()
+    {
+        return $this->businessDetails?->business_name;
+    }
 }

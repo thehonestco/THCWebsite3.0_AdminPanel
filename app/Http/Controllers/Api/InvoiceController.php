@@ -14,7 +14,12 @@ class InvoiceController extends Controller
      */
     public function index()
     {
-        $invoices = Invoice::with(['lead:id,business_name'])
+        $invoices = Invoice::with([
+                // ✅ Lead basic info
+                'lead:id',
+                // ✅ Business name comes from business_details
+                'lead.businessDetails:id,lead_id,business_name',
+            ])
             ->select([
                 'id',
                 'invoice_date',
@@ -32,7 +37,10 @@ class InvoiceController extends Controller
                 return [
                     'id' => $invoice->id,
                     'date' => $invoice->invoice_date?->format('d/m/Y'),
-                    'client' => $invoice->lead?->business_name,
+
+                    // ✅ FIXED SOURCE
+                    'client' => $invoice->lead?->businessDetails?->business_name,
+
                     'amount' => $invoice->grand_total,
                     'type' => ucfirst($invoice->type),
                     'description' => $invoice->description,
@@ -90,7 +98,11 @@ class InvoiceController extends Controller
 
         return response()->json([
             'message' => 'Invoice created successfully',
-            'data' => $invoice->load(['items', 'lead', 'bankDetail'])
+            'data' => $invoice->load([
+                'items',
+                'lead.businessDetails',
+                'bankDetail'
+            ])
         ], 201);
     }
 
@@ -101,7 +113,7 @@ class InvoiceController extends Controller
     {
         return response()->json([
             'data' => Invoice::with([
-                'lead',
+                'lead.businessDetails',
                 'bankDetail',
                 'items'
             ])->findOrFail($id)
