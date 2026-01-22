@@ -45,6 +45,7 @@ class JobDescriptionController extends Controller
             'about_job'        => 'nullable|string',
             'key_skills'       => 'nullable|string',
             'responsibilities' => 'nullable|string',
+            'interview_process' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -61,6 +62,7 @@ class JobDescriptionController extends Controller
             'about_job'        => $request->about_job,
             'key_skills'       => $request->key_skills,
             'responsibilities' => $request->responsibilities,
+            'interview_process' => $request->interview_process,
             'created_by'       => auth()->id(),
         ]);
 
@@ -115,6 +117,7 @@ class JobDescriptionController extends Controller
             'about_job'        => 'nullable|string',
             'key_skills'       => 'nullable|string',
             'responsibilities' => 'nullable|string',
+            'interview_process' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
