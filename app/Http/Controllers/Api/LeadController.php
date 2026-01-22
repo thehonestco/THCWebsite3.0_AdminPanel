@@ -107,7 +107,10 @@ class LeadController extends Controller
      */
     public function show(int $id)
     {
-        $lead = Lead::with('opportunities.notes')->find($id);
+        $lead = Lead::with([
+            'opportunities.notes',
+            'businessDetails'
+        ])->find($id);
 
         if (!$lead) {
             return response()->json([
