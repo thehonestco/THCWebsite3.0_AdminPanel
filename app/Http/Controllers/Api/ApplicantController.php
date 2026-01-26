@@ -171,6 +171,7 @@ class ApplicantController extends Controller
                 'applications' => $applicant->applications->map(function ($app) {
                     return [
                         'application_id' => $app->id,
+                        'position_id' => $app->position_id,
                         'position_name' => $app->position?->position_name,
                         'job_type' => $app->position?->job_type,
                         'work_mode' => $app->position?->work_mode,
