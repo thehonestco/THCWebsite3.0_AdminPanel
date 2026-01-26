@@ -257,4 +257,73 @@ class PositionController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Update applicant details for a position
+     */
+    public function updateApplicant(
+        Request $request,
+        int $positionId,
+        int $applicationId
+    ) {
+        $application = Application::where('id', $applicationId)
+            ->where('position_id', $positionId)
+            ->first();
+
+        if (!$application) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Application not found'
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'experience_years'   => 'nullable|numeric|min:0',
+            'current_ctc'        => 'nullable|numeric|min:0',
+            'expected_ctc'       => 'nullable|numeric|min:0',
+            'notice_period_days' => 'nullable|integer|min:0',
+            'stage'              => 'required|in:open,screening,interview,offer,hired,rejected',
+            'comment'            => 'nullable|string',
+            'last_contact_at'    => 'nullable|date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        $application->update($validator->validated());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Applicant updated successfully',
+            'data' => $application->load('applicant')
+        ]);
+    }
+
+    /**
+     * Remove applicant from a position
+     */
+    public function removeApplicant(int $positionId, int $applicationId)
+    {
+        $application = Application::where('id', $applicationId)
+            ->where('position_id', $positionId)
+            ->first();
+
+        if (!$application) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Application not found'
+            ], 404);
+        }
+
+        $application->delete(); // soft delete
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Applicant removed from position'
+        ]);
+    }
 }
