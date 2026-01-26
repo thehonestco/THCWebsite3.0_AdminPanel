@@ -26,7 +26,12 @@ class ApplicantController extends Controller
             ->withCount([
                 'applications as active_applications' => function ($q) {
                     $q->whereIn('stage', [
-                        'open', 'screening', 'interview', 'offer'
+                        'fresh',
+                        'screening',
+                        'hr_round',
+                        'tech_round',
+                        'final_round',
+                        'offer_sent',
                     ]);
                 }
             ])
@@ -119,7 +124,7 @@ class ApplicantController extends Controller
                             'applicant_id' => $applicant->id,
                         ],
                         [
-                            'stage' => 'open',
+                            'stage' => 'fresh',
                             'created_by' => auth()->id(),
                         ]
                     );
@@ -166,7 +171,14 @@ class ApplicantController extends Controller
                 'email' => $applicant->email,
                 'phone' => $applicant->phone,
                 'skills' => $applicant->skills ? explode(',', $applicant->skills) : [],
-                'active_applications' => $applicant->applications->count(),
+                'active_applications' => $applicant->applications->whereIn('stage', [
+                                                                    'fresh',
+                                                                    'screening',
+                                                                    'hr_round',
+                                                                    'tech_round',
+                                                                    'final_round',
+                                                                    'offer_sent',
+                                                                ])->count(),
 
                 'applications' => $applicant->applications->map(function ($app) {
                     return [
@@ -258,7 +270,7 @@ class ApplicantController extends Controller
             $applicant->applications()->firstOrCreate(
                 ['position_id' => $positionId],
                 [
-                    'stage' => 'open',
+                    'stage' => 'fresh',
                     'created_by' => auth()->id(),
                 ]
             );

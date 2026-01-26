@@ -9,6 +9,24 @@ class Application extends Model
 {
     use SoftDeletes;
 
+    public const STAGE_FRESH       = 'fresh';
+    public const STAGE_SCREENING   = 'screening';
+    public const STAGE_HR_ROUND    = 'hr_round';
+    public const STAGE_TECH_ROUND  = 'tech_round';
+    public const STAGE_FINAL_ROUND = 'final_round';
+    public const STAGE_OFFER_SENT  = 'offer_sent';
+    public const STAGE_REJECTED    = 'rejected';
+    public const STAGE_DROPPED     = 'dropped';
+
+    public const ACTIVE_STAGES = [
+        self::STAGE_FRESH,
+        self::STAGE_SCREENING,
+        self::STAGE_HR_ROUND,
+        self::STAGE_TECH_ROUND,
+        self::STAGE_FINAL_ROUND,
+        self::STAGE_OFFER_SENT,
+    ];
+
     protected $fillable = [
         'position_id',
         'applicant_id',
@@ -55,5 +73,10 @@ class Application extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->whereIn('stage', self::ACTIVE_STAGES);
     }
 }

@@ -85,7 +85,7 @@ class PositionController extends Controller
                             'applicant_id' => $applicantId,
                         ],
                         [
-                            'stage' => 'open', // ✅ ENUM safe
+                            'stage' => 'fresh', // ✅ ENUM safe
                             'created_by' => auth()->id(),
                         ]
                     );
@@ -233,7 +233,7 @@ class PositionController extends Controller
                         'applicant_id' => $applicantId,
                     ],
                     [
-                        'stage' => 'open', // ✅ ENUM SAFE
+                        'stage' => 'fresh', // ✅ ENUM SAFE
                         'created_by' => auth()->id(),
                     ]
                 );
@@ -282,7 +282,16 @@ class PositionController extends Controller
             'current_ctc'        => 'nullable|numeric|min:0',
             'expected_ctc'       => 'nullable|numeric|min:0',
             'notice_period_days' => 'nullable|integer|min:0',
-            'stage'              => 'required|in:open,screening,interview,offer,hired,rejected',
+            'stage' => 'required|in:
+                            fresh,
+                            screening,
+                            hr_round,
+                            tech_round,
+                            final_round,
+                            offer_sent,
+                            rejected,
+                            dropped
+                        ',
             'comment'            => 'nullable|string',
             'last_contact_at'    => 'nullable|date',
         ]);
