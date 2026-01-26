@@ -12,8 +12,11 @@ use App\Http\Controllers\Api\OpportunityController;
 use App\Http\Controllers\Api\NoteController;
 use App\Http\Controllers\Api\BankDetailController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\PublicLeadController;
 
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/public/lead', [PublicLeadController::class, 'store'])
+    ->middleware('throttle:10,1'); // 10 req / minute
 
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -115,7 +118,6 @@ Route::middleware('auth:sanctum')->group(function () {
         '/positions/{positionId}/applicants/{applicationId}',
         [PositionController::class, 'removeApplicant']
     )->middleware('perm:talent-acquisition.positions.edit');
-
 
 
     // Applicant
