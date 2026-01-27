@@ -266,49 +266,58 @@ class PositionController extends Controller
         int $positionId,
         int $applicationId
     ) {
-        $application = Application::where('id', $applicationId)
+        $application = Application::withTrashed()
+            ->where('id', $applicationId)
             ->where('position_id', $positionId)
             ->first();
 
         if (!$application) {
             return response()->json([
                 'success' => false,
-                'message' => 'Application not found'
+                'message' => 'Application not found for this position'
             ], 404);
         }
 
         $validator = Validator::make($request->all(), [
-            'experience_years'   => 'nullable|numeric|min:0',
+            'experience_years'   => 'nullable|numeric|min:0|max:50',
             'current_ctc'        => 'nullable|numeric|min:0',
             'expected_ctc'       => 'nullable|numeric|min:0',
-            'notice_period_days' => 'nullable|integer|min:0',
-            'stage' => 'required|in:
-                            fresh,
-                            screening,
-                            hr_round,
-                            tech_round,
-                            final_round,
-                            offer_sent,
-                            rejected,
-                            dropped
-                        ',
-            'comment'            => 'nullable|string',
-            'last_contact_at'    => 'nullable|date',
+            'notice_period_days' => 'nullable|integer|min:0|max:365',
+
+            'stage' => 'nullable|in:' . implode(',', [
+                Application::STAGE_FRESH,
+                Application::STAGE_SCREENING,
+                Application::STAGE_HR_ROUND,
+                Application::STAGE_TECH_ROUND,
+                Application::STAGE_FINAL_ROUND,
+                Application::STAGE_OFFER_SENT,
+                Application::STAGE_REJECTED,
+                Application::STAGE_DROPPED,
+            ]),
+
+            'comment' => 'nullable|string|max:2000',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors'  => $validator->errors()
+                'errors' => $validator->errors()
             ], 422);
         }
 
-        $application->update($validator->validated());
+        $data = $validator->validated();
+
+        // auto touch recruiter activity
+        if (array_key_exists('stage', $data) || array_key_exists('comment', $data)) {
+            $data['last_contact_at'] = now();
+        }
+
+        $application->update($data);
 
         return response()->json([
             'success' => true,
             'message' => 'Applicant updated successfully',
-            'data' => $application->load('applicant')
+            'data' => $application
         ]);
     }
 
