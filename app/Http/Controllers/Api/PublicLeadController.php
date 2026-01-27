@@ -30,6 +30,7 @@ class PublicLeadController extends Controller
                 'source'    => 'nullable|string|max:255',
 
                 'opportunity_description' => 'required|string',
+                'notes' => 'nullable|string',
 
                 'files.*' => 'nullable|file|max:10240', // 10MB
             ]);
@@ -70,7 +71,7 @@ class PublicLeadController extends Controller
                 'opportunity_id' => $opportunity->id,
                 'user_name'      => $validated['name'],
                 'title'          => 'Website Form Submission',
-                'content'        => $validated['opportunity_description'],
+                'content'        => $validated['notes'],
                 'note_status'    => 'public',
             ]);
 
