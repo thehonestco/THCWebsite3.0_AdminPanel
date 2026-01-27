@@ -13,10 +13,15 @@ use App\Http\Controllers\Api\NoteController;
 use App\Http\Controllers\Api\BankDetailController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\PublicLeadController;
+use App\Http\Controllers\Api\PublicJobController;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/public/lead', [PublicLeadController::class, 'store'])
     ->middleware('throttle:10,1'); // 10 req / minute
+Route::get('/public/jobs', [PublicJobController::class, 'index']);
+Route::get('/public/jobs/{id}', [PublicJobController::class, 'show']);
+Route::post('/public/jobs/{positionId}/apply', [PublicJobController::class, 'apply']
+)->middleware('throttle:10,1');
 
 Route::middleware('auth:sanctum')->group(function () {
 

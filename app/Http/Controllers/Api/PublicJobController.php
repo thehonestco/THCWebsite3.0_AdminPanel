@@ -1,0 +1,227 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Applicant;
+use App\Models\Application;
+use App\Models\Position;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class PublicJobController extends Controller
+{
+    /**
+     * 1️⃣ Public Job Listings (Cards / Listing Page)
+     * GET /api/public/jobs
+     */
+    public function index()
+    {
+        $jobs = Position::query()
+            ->where('status', 'open')
+            ->with('jobDescription:id,title')
+            ->orderByDesc('id')
+            ->get()
+            ->map(function ($job) {
+                return [
+                    'id' => $job->id,
+                    'title' => $job->position_name,
+
+                    'job_description_title' => $job->jobDescription?->title,
+
+                    'job_type' => ucfirst(str_replace('_', ' ', $job->job_type)),
+                    'work_mode' => ucfirst($job->work_mode),
+
+                    'experience' => "{$job->experience_min}-{$job->experience_max} yrs",
+
+                    'salary' => ($job->salary_min && $job->salary_max)
+                        ? "{$job->salary_min}-{$job->salary_max} LPA"
+                        : 'Not disclosed',
+
+                    'posted_at' => $job->created_at->diffForHumans(),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $jobs,
+        ]);
+    }
+
+    /**
+     * 2️⃣ Public Job Detail Page
+     * GET /api/public/jobs/{id}
+     */
+    public function show(int $id)
+    {
+        $job = Position::with('jobDescription')
+            ->where('status', 'open')
+            ->find($id);
+
+        if (!$job) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Job not found or no longer available',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $job->id,
+                'title' => $job->position_name,
+
+                /* 🔥 JOB DESCRIPTION FULL DATA */
+                'job_description' => [
+                    'title' => $job->jobDescription?->title,
+                    'about_job' => $job->jobDescription?->about_job,
+                    'responsibilities' => $job->jobDescription?->responsibilities,
+                    'key_skills' => $job->jobDescription?->key_skills,
+                    'interview_process' => $job->jobDescription?->interview_process,
+                ],
+
+                /* POSITION META */
+                'job_type' => ucfirst(str_replace('_', ' ', $job->job_type)),
+                'work_mode' => ucfirst($job->work_mode),
+
+                'experience' => "{$job->experience_min}-{$job->experience_max} years",
+
+                'salary' => ($job->salary_min && $job->salary_max)
+                    ? "{$job->salary_min}-{$job->salary_max} LPA"
+                    : 'Not disclosed',
+
+                'status' => 'Open',
+                'posted_at' => $job->created_at->toDateString(),
+            ],
+        ]);
+    }
+
+    public function apply(Request $request, int $positionId)
+    {
+        /* =====================
+         | 1️⃣ Validate Position
+         ===================== */
+        $position = Position::where('status', 'open')->find($positionId);
+
+        if (!$position) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Job position not available',
+            ], 404);
+        }
+
+        /* =====================
+         | 2️⃣ Basic Validation (NO FILE YET)
+         ===================== */
+        $validated = $request->validate([
+            'name'  => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'phone' => 'required|string|max:20',
+
+            'experience_years' => 'required|numeric|min:0',
+            'current_ctc'      => 'nullable|numeric|min:0',
+            'expected_ctc'     => 'nullable|numeric|min:0',
+            'notice_period_days' => 'nullable|integer|min:0',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+
+            /* =====================
+             | 3️⃣ Applicant (email unique)
+             ===================== */
+            $applicant = Applicant::where('email', $validated['email'])->first();
+
+            $isNewApplicant = false;
+
+            if (!$applicant) {
+                $applicant = Applicant::create([
+                    'name'   => $validated['name'],
+                    'email'  => $validated['email'],
+                    'phone'  => $validated['phone'],
+                    'status' => 'active',
+                ]);
+                $isNewApplicant = true;
+            }
+
+            /* =====================
+             | 4️⃣ Resume validation (ONLY for new applicant)
+             ===================== */
+            if ($isNewApplicant && !$request->hasFile('resume')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Resume is required',
+                ], 422);
+            }
+
+            if ($request->hasFile('resume')) {
+                $request->validate([
+                    'resume' => 'file|mimes:pdf,doc,docx|max:10240',
+                ]);
+            }
+
+            /* =====================
+             | 5️⃣ Prevent Duplicate Application
+             ===================== */
+            $alreadyApplied = Application::where([
+                'position_id' => $position->id,
+                'applicant_id' => $applicant->id,
+            ])->exists();
+
+            if ($alreadyApplied) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You have already applied for this position',
+                ], 409);
+            }
+
+            /* =====================
+             | 6️⃣ Create Application
+             ===================== */
+            $application = Application::create([
+                'position_id' => $position->id,
+                'applicant_id' => $applicant->id,
+
+                'experience_years' => $validated['experience_years'],
+                'current_ctc' => $validated['current_ctc'] ?? null,
+                'expected_ctc' => $validated['expected_ctc'] ?? null,
+                'notice_period_days' => $validated['notice_period_days'] ?? null,
+
+                'stage' => Application::STAGE_FRESH,
+                'created_by' => 1, // ✅ SYSTEM / PUBLIC
+            ]);
+
+            /* =====================
+             | 7️⃣ Resume Upload (SAFE)
+             ===================== */
+            if ($request->hasFile('resume')) {
+                $path = $request->file('resume')->store('resumes', 'public');
+
+                $application->update([
+                    'comment' => 'Resume uploaded: ' . $path,
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Application submitted successfully',
+                'data' => [
+                    'application_id' => $application->id,
+                    'applicant_id' => $applicant->id,
+                ],
+            ], 201);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
+}
