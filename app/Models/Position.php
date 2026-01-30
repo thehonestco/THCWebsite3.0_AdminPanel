@@ -14,6 +14,8 @@ class Position extends Model
         'job_description_id',
         'job_type',
         'work_mode',
+        'city',
+        'country',
         'experience_min',
         'experience_max',
         'salary_min',
@@ -44,5 +46,10 @@ class Position extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function skills()
+    {
+        return $this->belongsToMany(Skill::class);
     }
 }

@@ -16,7 +16,7 @@ class PositionController extends Controller
      */
     public function index()
     {
-        $positions = Position::with('jobDescription:id,title')
+        $positions = Position::with(['jobDescription:id,title', 'skills:id,name'])
             ->withCount('applications')
             ->orderByDesc('id')
             ->paginate(10);
@@ -38,17 +38,21 @@ class PositionController extends Controller
             'job_type'           => 'required|in:Full Time,Part Time,Contract',
             'work_mode'          => 'required|in:Onsite,Remote,Hybrid',
 
-            'experience_min'     => 'nullable|integer|min:0',
-            'experience_max'     => 'nullable|integer|gte:experience_min',
+            'city'    => 'nullable|string|max:100',
+            'country' => 'nullable|string|max:100',
 
-            'salary_min'         => 'nullable|integer|min:0',
-            'salary_max'         => 'nullable|integer|gte:salary_min',
+            'skills'   => 'nullable|array',
+            'skills.*' => 'exists:skills,id',
 
-            'status'             => 'required|in:open,closed',
+            'experience_min' => 'nullable|integer|min:0',
+            'experience_max' => 'nullable|integer|gte:experience_min',
+            'salary_min'     => 'nullable|integer|min:0',
+            'salary_max'     => 'nullable|integer|gte:salary_min',
 
-            // Existing applicants only
-            'applicant_ids'      => 'nullable|array',
-            'applicant_ids.*'    => 'exists:applicants,id',
+            'status' => 'required|in:open,closed',
+
+            'applicant_ids'   => 'nullable|array',
+            'applicant_ids.*' => 'exists:applicants,id',
         ]);
 
         if ($validator->fails()) {
@@ -61,13 +65,14 @@ class PositionController extends Controller
         DB::beginTransaction();
 
         try {
-            /** @var Position $position */
             $position = Position::create([
                 ...$request->only([
                     'position_name',
                     'job_description_id',
                     'job_type',
                     'work_mode',
+                    'city',
+                    'country',
                     'experience_min',
                     'experience_max',
                     'salary_min',
@@ -77,15 +82,16 @@ class PositionController extends Controller
                 'created_by' => auth()->id(),
             ]);
 
-            // ✅ Apply existing applicants (ENUM SAFE)
+            if ($request->filled('skills')) {
+                $position->skills()->sync($request->skills);
+            }
+
             if ($request->filled('applicant_ids')) {
                 foreach ($request->applicant_ids as $applicantId) {
                     $position->applications()->firstOrCreate(
+                        ['applicant_id' => $applicantId],
                         [
-                            'applicant_id' => $applicantId,
-                        ],
-                        [
-                            'stage' => 'fresh', // ✅ ENUM safe
+                            'stage' => 'fresh',
                             'created_by' => auth()->id(),
                         ]
                     );
@@ -97,7 +103,10 @@ class PositionController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Position created successfully',
-                'data' => $position->load('applications.applicant')
+                'data' => $position->load([
+                    'skills:id,name',
+                    'applications.applicant'
+                ])
             ], 201);
 
         } catch (\Throwable $e) {
@@ -106,7 +115,7 @@ class PositionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Something went wrong',
-                'error' => $e->getMessage() // 👈 helpful in dev
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -117,9 +126,10 @@ class PositionController extends Controller
     public function show(int $id)
     {
         $position = Position::with([
-            'jobDescription',
-            'applications.applicant'
-        ])->find($id);
+                'jobDescription',
+                'skills',
+                'applications.applicant'
+            ])->find($id);
 
         if (!$position) {
             return response()->json([
@@ -154,6 +164,12 @@ class PositionController extends Controller
             'work_mode'     => 'required|in:Onsite,Remote,Hybrid',
             'status'        => 'required|in:open,closed',
 
+            'city'    => 'nullable|string|max:100',
+            'country' => 'nullable|string|max:100',
+
+            'skills'   => 'nullable|array',
+            'skills.*' => 'exists:skills,id',
+
             'experience_min' => 'nullable|integer|min:0',
             'experience_max' => 'nullable|integer|gte:experience_min',
             'salary_min'     => 'nullable|integer|min:0',
@@ -167,13 +183,32 @@ class PositionController extends Controller
             ], 422);
         }
 
-        $position->update($validator->validated());
+        DB::beginTransaction();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Position updated successfully',
-            'data' => $position
-        ]);
+        try {
+            $position->update($validator->validated());
+
+            if ($request->has('skills')) {
+                $position->skills()->sync($request->skills);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Position updated successfully',
+                'data' => $position->load('skills:id,name')
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
