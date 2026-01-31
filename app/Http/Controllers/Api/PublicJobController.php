@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 class PublicJobController extends Controller
 {
     /**
-     * 1️⃣ Public Job Listings (Cards / Listing Page)
+     * 1️⃣ Public Job Listings
      * GET /api/public/jobs
      */
     public function index()
@@ -22,11 +22,10 @@ class PublicJobController extends Controller
             ->with('jobDescription:id,title')
             ->orderByDesc('id')
             ->get()
-            ->map(function ($job) {
+            ->map(function (Position $job) {
                 return [
                     'id' => $job->id,
                     'title' => $job->position_name,
-
                     'job_description_title' => $job->jobDescription?->title,
 
                     'job_type' => ucfirst(str_replace('_', ' ', $job->job_type)),
@@ -37,6 +36,12 @@ class PublicJobController extends Controller
                     'salary' => ($job->salary_min && $job->salary_max)
                         ? "{$job->salary_min}-{$job->salary_max} LPA"
                         : 'Not disclosed',
+
+                    'city' => $job->city,
+                    'country' => $job->country,
+
+                    // ✅ JSON skills (safe default)
+                    'skills' => $job->skills ?? [],
 
                     'posted_at' => $job->created_at->diffForHumans(),
                 ];
@@ -71,7 +76,7 @@ class PublicJobController extends Controller
                 'id' => $job->id,
                 'title' => $job->position_name,
 
-                /* 🔥 JOB DESCRIPTION FULL DATA */
+                /* JOB DESCRIPTION */
                 'job_description' => [
                     'title' => $job->jobDescription?->title,
                     'about_job' => $job->jobDescription?->about_job,
@@ -90,17 +95,25 @@ class PublicJobController extends Controller
                     ? "{$job->salary_min}-{$job->salary_max} LPA"
                     : 'Not disclosed',
 
+                'city' => $job->city,
+                'country' => $job->country,
+
+                // ✅ JSON skills for detail page
+                'skills' => $job->skills ?? [],
+
                 'status' => 'Open',
                 'posted_at' => $job->created_at->toDateString(),
             ],
         ]);
     }
 
+    /**
+     * 3️⃣ Apply for Job
+     * POST /api/public/jobs/{id}/apply
+     */
     public function apply(Request $request, int $positionId)
     {
-        /* =====================
-         | 1️⃣ Validate Position
-         ===================== */
+        /* 1️⃣ Validate Position */
         $position = Position::where('status', 'open')->find($positionId);
 
         if (!$position) {
@@ -110,9 +123,7 @@ class PublicJobController extends Controller
             ], 404);
         }
 
-        /* =====================
-         | 2️⃣ Basic Validation (NO FILE YET)
-         ===================== */
+        /* 2️⃣ Basic Validation */
         $validated = $request->validate([
             'name'  => 'required|string|max:255',
             'email' => 'required|email|max:255',
@@ -127,12 +138,8 @@ class PublicJobController extends Controller
         DB::beginTransaction();
 
         try {
-
-            /* =====================
-             | 3️⃣ Applicant (email unique)
-             ===================== */
+            /* 3️⃣ Applicant (email unique) */
             $applicant = Applicant::where('email', $validated['email'])->first();
-
             $isNewApplicant = false;
 
             if (!$applicant) {
@@ -145,9 +152,7 @@ class PublicJobController extends Controller
                 $isNewApplicant = true;
             }
 
-            /* =====================
-             | 4️⃣ Resume validation (ONLY for new applicant)
-             ===================== */
+            /* 4️⃣ Resume validation */
             if ($isNewApplicant && !$request->hasFile('resume')) {
                 return response()->json([
                     'success' => false,
@@ -161,9 +166,7 @@ class PublicJobController extends Controller
                 ]);
             }
 
-            /* =====================
-             | 5️⃣ Prevent Duplicate Application
-             ===================== */
+            /* 5️⃣ Prevent duplicate application */
             $alreadyApplied = Application::where([
                 'position_id' => $position->id,
                 'applicant_id' => $applicant->id,
@@ -176,9 +179,7 @@ class PublicJobController extends Controller
                 ], 409);
             }
 
-            /* =====================
-             | 6️⃣ Create Application
-             ===================== */
+            /* 6️⃣ Create Application */
             $application = Application::create([
                 'position_id' => $position->id,
                 'applicant_id' => $applicant->id,
@@ -189,15 +190,12 @@ class PublicJobController extends Controller
                 'notice_period_days' => $validated['notice_period_days'] ?? null,
 
                 'stage' => Application::STAGE_FRESH,
-                'created_by' => 1, // ✅ SYSTEM / PUBLIC
+                'created_by' => 1, // SYSTEM / PUBLIC
             ]);
 
-            /* =====================
-             | 7️⃣ Resume Upload (SAFE)
-             ===================== */
+            /* 7️⃣ Resume Upload */
             if ($request->hasFile('resume')) {
                 $path = $request->file('resume')->store('resumes', 'public');
-
                 $application->update([
                     'comment' => 'Resume uploaded: ' . $path,
                 ]);

@@ -16,12 +16,17 @@ class Position extends Model
         'work_mode',
         'city',
         'country',
+        'skills',
         'experience_min',
         'experience_max',
         'salary_min',
         'salary_max',
         'status',
         'created_by',
+    ];
+
+    protected $casts = [
+        'skills' => 'array',
     ];
 
     /**
@@ -46,10 +51,5 @@ class Position extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function skills()
-    {
-        return $this->belongsToMany(Skill::class);
     }
 }

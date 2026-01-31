@@ -16,7 +16,7 @@ class PositionController extends Controller
      */
     public function index()
     {
-        $positions = Position::with(['jobDescription:id,title', 'skills:id,name'])
+        $positions = Position::with('jobDescription:id,title')
             ->withCount('applications')
             ->orderByDesc('id')
             ->paginate(10);
@@ -28,7 +28,7 @@ class PositionController extends Controller
     }
 
     /**
-     * Create Position (with optional applicants)
+     * Create Position
      */
     public function store(Request $request)
     {
@@ -42,7 +42,7 @@ class PositionController extends Controller
             'country' => 'nullable|string|max:100',
 
             'skills'   => 'nullable|array',
-            'skills.*' => 'exists:skills,id',
+            'skills.*' => 'string|max:50',
 
             'experience_min' => 'nullable|integer|min:0',
             'experience_max' => 'nullable|integer|gte:experience_min',
@@ -66,25 +66,10 @@ class PositionController extends Controller
 
         try {
             $position = Position::create([
-                ...$request->only([
-                    'position_name',
-                    'job_description_id',
-                    'job_type',
-                    'work_mode',
-                    'city',
-                    'country',
-                    'experience_min',
-                    'experience_max',
-                    'salary_min',
-                    'salary_max',
-                    'status',
-                ]),
+                ...$validator->validated(),
+                'skills' => array_values(array_unique($request->skills ?? [])),
                 'created_by' => auth()->id(),
             ]);
-
-            if ($request->filled('skills')) {
-                $position->skills()->sync($request->skills);
-            }
 
             if ($request->filled('applicant_ids')) {
                 foreach ($request->applicant_ids as $applicantId) {
@@ -103,10 +88,7 @@ class PositionController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Position created successfully',
-                'data' => $position->load([
-                    'skills:id,name',
-                    'applications.applicant'
-                ])
+                'data' => $position->load('applications.applicant')
             ], 201);
 
         } catch (\Throwable $e) {
@@ -126,10 +108,9 @@ class PositionController extends Controller
     public function show(int $id)
     {
         $position = Position::with([
-                'jobDescription',
-                'skills',
-                'applications.applicant'
-            ])->find($id);
+            'jobDescription',
+            'applications.applicant'
+        ])->find($id);
 
         if (!$position) {
             return response()->json([
@@ -168,7 +149,7 @@ class PositionController extends Controller
             'country' => 'nullable|string|max:100',
 
             'skills'   => 'nullable|array',
-            'skills.*' => 'exists:skills,id',
+            'skills.*' => 'string|max:50',
 
             'experience_min' => 'nullable|integer|min:0',
             'experience_max' => 'nullable|integer|gte:experience_min',
@@ -186,18 +167,19 @@ class PositionController extends Controller
         DB::beginTransaction();
 
         try {
-            $position->update($validator->validated());
-
-            if ($request->has('skills')) {
-                $position->skills()->sync($request->skills);
-            }
+            $position->update([
+                ...$validator->validated(),
+                'skills' => array_values(
+                    array_unique($request->skills ?? $position->skills ?? [])
+                ),
+            ]);
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Position updated successfully',
-                'data' => $position->load('skills:id,name')
+                'data' => $position
             ]);
 
         } catch (\Throwable $e) {
@@ -234,7 +216,7 @@ class PositionController extends Controller
     }
 
     /**
-     * Add existing applicants to a position
+     * Add existing applicants
      */
     public function addApplicants(Request $request, int $id)
     {
@@ -259,48 +241,30 @@ class PositionController extends Controller
             ], 422);
         }
 
-        DB::beginTransaction();
-
-        try {
+        DB::transaction(function () use ($request, $position) {
             foreach ($request->applicant_ids as $applicantId) {
                 $position->applications()->firstOrCreate(
+                    ['applicant_id' => $applicantId],
                     [
-                        'applicant_id' => $applicantId,
-                    ],
-                    [
-                        'stage' => 'fresh', // ✅ ENUM SAFE
+                        'stage' => 'fresh',
                         'created_by' => auth()->id(),
                     ]
                 );
             }
+        });
 
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Applicants added successfully',
-                'data' => $position->load('applications.applicant')
-            ]);
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Something went wrong',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Applicants added successfully',
+            'data' => $position->load('applications.applicant')
+        ]);
     }
 
     /**
-     * Update applicant details for a position
+     * Update applicant
      */
-    public function updateApplicant(
-        Request $request,
-        int $positionId,
-        int $applicationId
-    ) {
+    public function updateApplicant(Request $request, int $positionId, int $applicationId)
+    {
         $application = Application::withTrashed()
             ->where('id', $applicationId)
             ->where('position_id', $positionId)
@@ -318,19 +282,8 @@ class PositionController extends Controller
             'current_ctc'        => 'nullable|numeric|min:0',
             'expected_ctc'       => 'nullable|numeric|min:0',
             'notice_period_days' => 'nullable|integer|min:0|max:365',
-
-            'stage' => 'nullable|in:' . implode(',', [
-                Application::STAGE_FRESH,
-                Application::STAGE_SCREENING,
-                Application::STAGE_HR_ROUND,
-                Application::STAGE_TECH_ROUND,
-                Application::STAGE_FINAL_ROUND,
-                Application::STAGE_OFFER_SENT,
-                Application::STAGE_REJECTED,
-                Application::STAGE_DROPPED,
-            ]),
-
-            'comment' => 'nullable|string|max:2000',
+            'stage'              => 'nullable|string',
+            'comment'            => 'nullable|string|max:2000',
         ]);
 
         if ($validator->fails()) {
@@ -342,8 +295,7 @@ class PositionController extends Controller
 
         $data = $validator->validated();
 
-        // auto touch recruiter activity
-        if (array_key_exists('stage', $data) || array_key_exists('comment', $data)) {
+        if (isset($data['stage']) || isset($data['comment'])) {
             $data['last_contact_at'] = now();
         }
 
@@ -357,7 +309,7 @@ class PositionController extends Controller
     }
 
     /**
-     * Remove applicant from a position
+     * Remove applicant
      */
     public function removeApplicant(int $positionId, int $applicationId)
     {
@@ -372,7 +324,7 @@ class PositionController extends Controller
             ], 404);
         }
 
-        $application->delete(); // soft delete
+        $application->delete();
 
         return response()->json([
             'success' => true,

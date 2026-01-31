@@ -14,6 +14,8 @@ use App\Http\Controllers\Api\BankDetailController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\PublicLeadController;
 use App\Http\Controllers\Api\PublicJobController;
+use App\Http\Controllers\Api\TemplateController;
+use App\Http\Controllers\Api\SmtpSettingController;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/public/lead', [PublicLeadController::class, 'store'])
@@ -296,5 +298,57 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete(
         '/invoices/{id}',
         [InvoiceController::class, 'destroy']
+    )->middleware('perm:accounts.invoices.delete');
+
+    // Templates
+    Route::get(
+        '/templates',
+        [TemplateController::class, 'index']
+    )->middleware('perm:marketing.templates.view');
+
+    Route::post(
+        '/templates',
+        [TemplateController::class, 'store']
+    )->middleware('perm:marketing.templates.add');
+
+    Route::get(
+        '/templates/{id}',
+        [TemplateController::class, 'show']
+    )->middleware('perm:marketing.templates.view');
+
+    Route::put(
+        '/templates/{id}',
+        [TemplateController::class, 'update']
+    )->middleware('perm:marketing.templates.edit');
+
+    Route::delete(
+        '/templates/{id}',
+        [TemplateController::class, 'destroy']
+    )->middleware('perm:marketing.templates.delete');
+
+    // SMTP Settings
+    Route::get(
+        '/smtp-settings',
+        [SmtpSettingController::class, 'index']
+    )->middleware('perm:accounts.invoices.view');
+
+    Route::post(
+        '/smtp-settings',
+        [SmtpSettingController::class, 'store']
+    )->middleware('perm:accounts.invoices.add');
+
+    Route::get(
+        '/smtp-settings/{id}',
+        [SmtpSettingController::class, 'show']
+    )->middleware('perm:accounts.invoices.view');
+
+    Route::put(
+        '/smtp-settings/{id}',
+        [SmtpSettingController::class, 'update']
+    )->middleware('perm:accounts.invoices.edit');
+
+    Route::delete(
+        '/smtp-settings/{id}',
+        [SmtpSettingController::class, 'destroy']
     )->middleware('perm:accounts.invoices.delete');
 });
