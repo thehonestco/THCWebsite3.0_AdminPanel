@@ -31,4 +31,9 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'reoon' => [
+        'key' => env('REOON_API_KEY'),
+        'url' => env('REOON_API_URL'),
+    ],
+
 ];

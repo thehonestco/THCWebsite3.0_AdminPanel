@@ -10,6 +10,7 @@ use App\Models\NoteAttachment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Services\ReoonService;
 
 class PublicLeadController extends Controller
 {
@@ -32,8 +33,23 @@ class PublicLeadController extends Controller
                 'opportunity_description' => 'required|string',
                 'notes' => 'nullable|string',
 
-                'files.*' => 'nullable|file|max:10240', // 10MB
+                'files.*' => 'nullable|file|max:10240',
             ]);
+
+            /* =====================
+             | 1️⃣.5️⃣ EMAIL VERIFICATION (REOON)
+             ===================== */
+            $reoon = app(ReoonService::class);
+            $emailCheck = $reoon->verify($validated['email']);
+
+            // ❌ block only if undeliverable
+            if ($emailCheck['blocked']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Email address is invalid or not allowed',
+                    'email_status' => $emailCheck['status'],
+                ], 422);
+            }
 
             /* =====================
              | 2️⃣ FIND OR CREATE LEAD
@@ -51,7 +67,18 @@ class PublicLeadController extends Controller
 
                     'source' => $validated['source'] ?? 'Website',
                     'stage'  => 'Fresh',
+
+                    'email_verified' => $emailCheck['verified'],
+                    'email_verification_status' => $emailCheck['status'],
                 ]);
+            } else {
+                // 🔁 update verification if not verified yet
+                if (!$lead->email_verified) {
+                    $lead->update([
+                        'email_verified' => $emailCheck['verified'],
+                        'email_verification_status' => $emailCheck['status'],
+                    ]);
+                }
             }
 
             /* =====================
@@ -59,7 +86,7 @@ class PublicLeadController extends Controller
              ===================== */
             $opportunity = Opportunity::create([
                 'lead_id'     => $lead->id,
-                'title'       => ucfirst($validated['form_type'] ?? 'Website Inquiry'),
+                'title'       => ucfirst(trim($validated['form_type'] ?? '')) ?: 'Website Inquiry',
                 'description' => $validated['opportunity_description'],
                 'status'      => 'intro-call',
             ]);
@@ -76,9 +103,8 @@ class PublicLeadController extends Controller
             ]);
 
             /* =====================
-             | FILE UPLOAD (FIXED)
+             | FILE UPLOAD
              ===================== */
-            // support both: file & files[]
             $uploadedFiles = [];
 
             if ($request->hasFile('files')) {
@@ -88,7 +114,6 @@ class PublicLeadController extends Controller
             }
 
             foreach ($uploadedFiles as $file) {
-
                 if (!$file->isValid()) {
                     continue;
                 }
@@ -104,9 +129,16 @@ class PublicLeadController extends Controller
 
             DB::commit();
 
+            /* =====================
+             | FINAL RESPONSE
+             ===================== */
             return response()->json([
                 'success' => true,
-                'message' => 'Thank you! We will contact you soon.',
+                'message' => $emailCheck['verified']
+                    ? 'Thank you! We will contact you soon.'
+                    : 'Thank you! Email received but not verified yet.',
+                'email_verified' => $emailCheck['verified'],
+                'email_status' => $emailCheck['status'],
                 'data' => [
                     'lead_id'        => $lead->id,
                     'opportunity_id' => $opportunity->id,
