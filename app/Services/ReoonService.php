@@ -24,15 +24,15 @@ class ReoonService
 
             $data = $response->json();
 
-            // 🔑 REAL STATUS FROM REOON
+            // REAL STATUS FROM REOON
             $status = strtolower($data['status'] ?? 'unknown');
 
-            // ✅ VERIFIED RULES
+            // VERIFIED RULES
             $verifiedStatuses = [
                 'valid',
             ];
 
-            // ❌ BLOCKED RULES
+            // BLOCKED RULES
             $blockedStatuses = [
                 'invalid',
                 'disposable',

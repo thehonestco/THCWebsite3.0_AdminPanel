@@ -139,8 +139,25 @@ class PublicJobController extends Controller
         DB::beginTransaction();
 
         try {
-            /* 3️⃣ Applicant (email unique) */
+            /* 2️⃣.5️⃣ EMAIL VERIFICATION (REOON) */
             $applicant = Applicant::where('email', $validated['email'])->first();
+
+            if (!$applicant || !$applicant->email_verified) {
+                $emailCheck = app(ReoonService::class)->verify($validated['email']);
+
+                // ❌ allow ONLY valid emails
+                if ($emailCheck['status'] !== 'safe') {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Please provide a valid email address',
+                        'email_status' => $emailCheck['status'],
+                    ], 422);
+                }
+            }
+
+            /* 3️⃣ Applicant (email unique) */
             $isNewApplicant = false;
 
             if (!$applicant) {
@@ -149,12 +166,26 @@ class PublicJobController extends Controller
                     'email'  => $validated['email'],
                     'phone'  => $validated['phone'],
                     'status' => 'active',
+
+                    // 🔐 store verification result
+                    'email_verified' => true,
+                    'email_verification_status' => 'valid',
                 ]);
                 $isNewApplicant = true;
+            } else {
+                // 🔁 update verification if not already verified
+                if (!$applicant->email_verified) {
+                    $applicant->update([
+                        'email_verified' => true,
+                        'email_verification_status' => 'valid',
+                    ]);
+                }
             }
 
             /* 4️⃣ Resume validation */
             if ($isNewApplicant && !$request->hasFile('resume')) {
+                DB::rollBack();
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Resume is required',
@@ -169,11 +200,13 @@ class PublicJobController extends Controller
 
             /* 5️⃣ Prevent duplicate application */
             $alreadyApplied = Application::where([
-                'position_id' => $position->id,
+                'position_id'  => $position->id,
                 'applicant_id' => $applicant->id,
             ])->exists();
 
             if ($alreadyApplied) {
+                DB::rollBack();
+
                 return response()->json([
                     'success' => false,
                     'message' => 'You have already applied for this position',
@@ -182,21 +215,22 @@ class PublicJobController extends Controller
 
             /* 6️⃣ Create Application */
             $application = Application::create([
-                'position_id' => $position->id,
-                'applicant_id' => $applicant->id,
+                'position_id'   => $position->id,
+                'applicant_id'  => $applicant->id,
 
-                'experience_years' => $validated['experience_years'],
-                'current_ctc' => $validated['current_ctc'] ?? null,
-                'expected_ctc' => $validated['expected_ctc'] ?? null,
+                'experience_years'   => $validated['experience_years'],
+                'current_ctc'        => $validated['current_ctc'] ?? null,
+                'expected_ctc'       => $validated['expected_ctc'] ?? null,
                 'notice_period_days' => $validated['notice_period_days'] ?? null,
 
-                'stage' => Application::STAGE_FRESH,
+                'stage'      => Application::STAGE_FRESH,
                 'created_by' => 1, // SYSTEM / PUBLIC
             ]);
 
             /* 7️⃣ Resume Upload */
             if ($request->hasFile('resume')) {
                 $path = $request->file('resume')->store('resumes', 'public');
+
                 $application->update([
                     'comment' => 'Resume uploaded: ' . $path,
                 ]);
@@ -209,7 +243,7 @@ class PublicJobController extends Controller
                 'message' => 'Application submitted successfully',
                 'data' => [
                     'application_id' => $application->id,
-                    'applicant_id' => $applicant->id,
+                    'applicant_id'   => $applicant->id,
                 ],
             ], 201);
 
