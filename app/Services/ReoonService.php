@@ -14,6 +14,7 @@ class ReoonService
                 [
                     'email' => $email,
                     'key'   => config('services.reoon.key'),
+                    'mode'  => 'power',
                 ]
             );
 

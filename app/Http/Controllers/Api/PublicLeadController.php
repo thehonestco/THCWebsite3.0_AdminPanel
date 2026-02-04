@@ -42,13 +42,13 @@ class PublicLeadController extends Controller
             $reoon = app(ReoonService::class);
             $emailCheck = $reoon->verify($validated['email']);
 
-            // ❌ block only if undeliverable
-            if ($emailCheck['blocked']) {
-                DB::rollBack(); // 🔴 IMPORTANT
+            // allow ONLY valid emails
+            if ($emailCheck['status'] !== 'valid') {
+                DB::rollBack();
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Email address is invalid or not allowed',
+                    'message' => 'Please provide a valid email address',
                     'email_status' => $emailCheck['status'],
                 ], 422);
             }
