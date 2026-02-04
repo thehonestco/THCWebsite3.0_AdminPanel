@@ -32,8 +32,8 @@ return [
     ],
 
     'reoon' => [
-        'key' => env('REOON_API_KEY'),
-        'url' => env('REOON_API_URL'),
+        'key' => env('REOON_API_KEY')?? "Km3hSOzUJiOZlu3sSMOjRWLoivNPEM6Y",
+        'url' => env('REOON_API_URL')?? "https://emailverifier.reoon.com/api/v1/verify",
     ],
 
 ];
