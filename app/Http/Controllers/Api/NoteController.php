@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Note;
+use App\Models\NoteAttachment;
 use App\Models\Opportunity;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class NoteController extends Controller
 {
@@ -25,7 +27,10 @@ class NoteController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $opportunity->notes()->latest()->get()
+            'data' => $opportunity->notes()
+                ->with('attachments')
+                ->latest()
+                ->get()
         ]);
     }
 
@@ -44,20 +49,64 @@ class NoteController extends Controller
         }
 
         $validated = $request->validate([
-            'user_name'   => 'required|string|max:255',
-            'title'       => 'nullable|string|max:255',
-            'content'     => 'required|string',
-            'note_status' => 'nullable|string|max:100',
+            'content' => 'required|string|min:1',
+            'opportunity_stage' => 'required|string|max:100',
+
+            'attachments'   => 'nullable|array',
+            'attachments.*' => 'file|max:10240',
         ]);
 
-        $note = $opportunity->notes()->create($validated);
+        DB::beginTransaction();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Note created successfully',
-            'data' => $note
-        ], 201);
+        try {
+            /* 1️⃣ Create Note */
+            $note = $opportunity->notes()->create([
+                'comment' => $validated['content'], // ✅ FIXED
+                'created_by' => auth()->check()
+                    ? auth()->user()->name
+                    : 'System', // ✅ FIXED
+            ]);
+
+            /* 2️⃣ Update Opportunity Stage */
+            $opportunity->update([
+                'stage' => $validated['opportunity_stage'],
+            ]);
+
+            /* 3️⃣ Attachments */
+            if ($request->hasFile('attachments')) {
+                foreach ($request->file('attachments') as $file) {
+                    if (!$file->isValid()) {
+                        continue;
+                    }
+
+                    $path = $file->store('notes', 'public');
+
+                    $note->attachments()->create([
+                        'file_name' => $file->getClientOriginalName(),
+                        'file_path' => $path,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Note created successfully',
+                'data' => $note->load('attachments')
+            ], 201);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
     }
+
 
     /**
      * GET /api/notes/{id}
@@ -81,6 +130,7 @@ class NoteController extends Controller
 
     /**
      * PUT /api/notes/{id}
+     * Update ONLY comment (files untouched)
      */
     public function update(Request $request, $id)
     {
@@ -94,33 +144,39 @@ class NoteController extends Controller
         }
 
         $validated = $request->validate([
-            'user_name'   => 'sometimes|required|string|max:255',
-            'title'       => 'nullable|string|max:255',
-            'content'     => 'sometimes|required|string',
-            'note_status' => 'nullable|string|max:100',
+            'comment' => 'required|string',
         ]);
 
-        $note->update($validated);
+        $note->update([
+            'comment' => $validated['comment'],
+        ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Note updated successfully',
-            'data' => $note
+            'message' => 'Comment updated successfully',
+            'data' => $note->load('attachments')
         ]);
     }
 
     /**
      * DELETE /api/notes/{id}
+     * Deletes note + attachments
      */
     public function destroy($id)
     {
-        $note = Note::find($id);
+        $note = Note::with('attachments')->find($id);
 
         if (!$note) {
             return response()->json([
                 'success' => false,
                 'message' => 'Note not found'
             ], 404);
+        }
+
+        // delete files
+        foreach ($note->attachments as $attachment) {
+            \Storage::disk('public')->delete($attachment->file_path);
+            $attachment->delete();
         }
 
         $note->delete();

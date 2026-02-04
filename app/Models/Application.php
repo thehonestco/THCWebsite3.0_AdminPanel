@@ -38,6 +38,7 @@ class Application extends Model
 
         'stage',
         'comment',
+        'resume_path',
         'last_contact_at',
 
         'created_by',

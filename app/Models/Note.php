@@ -8,10 +8,8 @@ class Note extends Model
 {
     protected $fillable = [
         'opportunity_id',
-        'user_name',
-        'title',
-        'content',
-        'note_status'
+        'comment',
+        'created_by', // optional (user id / name)
     ];
 
     public function opportunity()

@@ -188,13 +188,13 @@ class PublicJobController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Resume is required',
+                    'message' => 'Resume (PDF) is required',
                 ], 422);
             }
 
             if ($request->hasFile('resume')) {
                 $request->validate([
-                    'resume' => 'file|mimes:pdf,doc,docx|max:10240',
+                    'resume' => 'required|file|mimes:pdf|max:10240',
                 ]);
             }
 
@@ -229,10 +229,19 @@ class PublicJobController extends Controller
 
             /* 7️⃣ Resume Upload */
             if ($request->hasFile('resume')) {
-                $path = $request->file('resume')->store('resumes', 'public');
+
+                $resume = $request->file('resume');
+
+                $fileName = time() . '_' . preg_replace('/\s+/', '_', $resume->getClientOriginalName());
+
+                $path = $resume->storeAs(
+                    'resumes',
+                    $fileName,
+                    'public'
+                );
 
                 $application->update([
-                    'comment' => 'Resume uploaded: ' . $path,
+                    'resume_path' => $path,   // ✅ proper field
                 ]);
             }
 
