@@ -9,11 +9,6 @@ class ReoonService
     public function verify(string $email): array
     {
         try {
-            dd(
-                config('services.reoon.url'),
-                config('services.reoon.key')
-            );
-            
             $response = Http::timeout(10)->get(
                 config('services.reoon.url'),
                 [
