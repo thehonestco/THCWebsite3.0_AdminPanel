@@ -44,6 +44,8 @@ class PublicLeadController extends Controller
 
             // ❌ block only if undeliverable
             if ($emailCheck['blocked']) {
+                DB::rollBack(); // 🔴 IMPORTANT
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Email address is invalid or not allowed',

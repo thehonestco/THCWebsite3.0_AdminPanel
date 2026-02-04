@@ -8,6 +8,7 @@ use App\Models\Application;
 use App\Models\Position;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\ReoonService;
 
 class PublicJobController extends Controller
 {
