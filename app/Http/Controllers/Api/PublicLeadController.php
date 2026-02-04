@@ -43,7 +43,7 @@ class PublicLeadController extends Controller
             $emailCheck = $reoon->verify($validated['email']);
 
             // allow ONLY valid emails
-            if ($emailCheck['status'] !== 'valid') {
+            if ($emailCheck['status'] !== 'safe') {
                 DB::rollBack();
 
                 return response()->json([
