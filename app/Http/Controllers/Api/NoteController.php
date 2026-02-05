@@ -8,6 +8,7 @@ use App\Models\NoteAttachment;
 use App\Models\Opportunity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\LeadStatusService;
 
 class NoteController extends Controller
 {
@@ -61,10 +62,10 @@ class NoteController extends Controller
         try {
             /* 1️⃣ Create Note */
             $note = $opportunity->notes()->create([
-                'comment' => $validated['content'], // ✅ FIXED
+                'comment' => $validated['content'],
                 'created_by' => auth()->check()
                     ? auth()->user()->name
-                    : 'System', // ✅ FIXED
+                    : 'System',
             ]);
 
             /* 2️⃣ Update Opportunity Stage */
@@ -72,7 +73,11 @@ class NoteController extends Controller
                 'stage' => $validated['opportunity_stage'],
             ]);
 
-            /* 3️⃣ Attachments */
+            /* 3️⃣ 🔥 Update Lead Status/Stage */
+            LeadStatusService::update($opportunity->lead_id);
+            // OR: LeadStatusService::update($opportunity->lead->id);
+
+            /* 4️⃣ Attachments */
             if ($request->hasFile('attachments')) {
                 foreach ($request->file('attachments') as $file) {
                     if (!$file->isValid()) {
@@ -107,7 +112,6 @@ class NoteController extends Controller
         }
     }
 
-
     /**
      * GET /api/notes/{id}
      */
@@ -130,11 +134,11 @@ class NoteController extends Controller
 
     /**
      * PUT /api/notes/{id}
-     * Update ONLY comment (files untouched)
+     * Update comment + opportunity stage
      */
     public function update(Request $request, $id)
     {
-        $note = Note::find($id);
+        $note = Note::with('opportunity')->find($id);
 
         if (!$note) {
             return response()->json([
@@ -145,17 +149,47 @@ class NoteController extends Controller
 
         $validated = $request->validate([
             'comment' => 'required|string',
+            'opportunity_stage' => 'nullable|string|max:100',
         ]);
 
-        $note->update([
-            'comment' => $validated['comment'],
-        ]);
+        DB::beginTransaction();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Comment updated successfully',
-            'data' => $note->load('attachments')
-        ]);
+        try {
+            /* 1️⃣ Update Comment */
+            $note->update([
+                'comment' => $validated['comment'],
+            ]);
+
+            /* 2️⃣ Update Opportunity Stage (if provided) */
+            if (!empty($validated['opportunity_stage'])) {
+
+                $note->opportunity->update([
+                    'stage' => $validated['opportunity_stage'],
+                ]);
+
+                /* 3️⃣ 🔥 Update Lead Status */
+                LeadStatusService::update(
+                    $note->opportunity->lead_id
+                );
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Note updated successfully',
+                'data' => $note->load('attachments')
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
     }
 
     /**
