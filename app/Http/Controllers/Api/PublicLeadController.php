@@ -98,10 +98,8 @@ class PublicLeadController extends Controller
              ===================== */
             $note = Note::create([
                 'opportunity_id' => $opportunity->id,
-                'user_name'      => $validated['name'],
-                'title'          => 'Website Form Submission',
-                'content'        => $validated['notes'],
-                'note_status'    => 'public',
+                'comment'        => $validated['notes'],
+                'created_by'      => $validated['name'],
             ]);
 
             /* =====================
