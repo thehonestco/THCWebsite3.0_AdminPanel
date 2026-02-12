@@ -31,7 +31,7 @@ class ApplicantController extends Controller
                         'hr_round',
                         'tech_round',
                         'final_round',
-                        'offer_sent',
+                        'offer_sent', 
                     ]);
                 }
             ])
@@ -63,6 +63,8 @@ class ApplicantController extends Controller
                     'name' => $a->name,
                     'email' => $a->email,
                     'phone' => $a->phone,
+                    'linkedin_url' => $a->linkedin_url,
+                    'status' => $a->status,
                     'skills' => $a->skills ? explode(',', $a->skills) : [],
 
                     'active_applications' => $a->active_applications,

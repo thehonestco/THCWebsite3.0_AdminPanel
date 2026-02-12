@@ -9,6 +9,7 @@ use App\Models\Position;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\ReoonService;
+use Illuminate\Support\Facades\Storage;
 
 class PublicJobController extends Controller
 {
@@ -227,21 +228,33 @@ class PublicJobController extends Controller
                 'created_by' => 1, // SYSTEM / PUBLIC
             ]);
 
-            /* 7️⃣ Resume Upload */
+            /* Resume Upload */
             if ($request->hasFile('resume')) {
 
                 $resume = $request->file('resume');
 
                 $fileName = time() . '_' . preg_replace('/\s+/', '_', $resume->getClientOriginalName());
 
-                $path = $resume->storeAs(
+                $path = Storage::disk('s3')->putFileAs(
                     'resumes',
+                    $resume,
                     $fileName,
-                    'public'
+                    ['visibility' => 'private']
                 );
 
+                // ❗ Upload fail check
+                if (!$path) {
+                    throw new \Exception('Resume upload failed to S3');
+                }
+
+                Storage::disk('s3')->setVisibility($path, 'public');
+
+                // ✅ Full URL generate
+                $url = Storage::disk('s3')->url($path);
+
+                // ✅ Save full URL in DB
                 $application->update([
-                    'resume_path' => $path,   // ✅ proper field
+                    'resume_path' => $url,
                 ]);
             }
 
@@ -258,6 +271,7 @@ class PublicJobController extends Controller
 
         } catch (\Throwable $e) {
             DB::rollBack();
+            dd($e->getMessage());
 
             return response()->json([
                 'success' => false,
