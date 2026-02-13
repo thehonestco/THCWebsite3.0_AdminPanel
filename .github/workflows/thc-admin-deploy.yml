@@ -24,6 +24,10 @@ jobs:
       APP_KEY: ${{ secrets.APP_KEY }}
       APP_URL: ${{ secrets.APP_URL }}
       REOON_API_KEY: ${{ secrets.REOON_API_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_BUCKET: ${{ secrets.AWS_BUCKET }}
+      AWS_URL: ${{ secrets.AWS_URL }}
 
     steps:
       # Clean working directory before starting
@@ -123,6 +127,10 @@ jobs:
       APP_KEY: ${{ secrets.APP_KEY }}
       APP_URL: ${{ secrets.APP_URL }}
       REOON_API_KEY: ${{ secrets.REOON_API_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_BUCKET: ${{ secrets.AWS_BUCKET }}
+      AWS_URL: ${{ secrets.AWS_URL }}
 
     steps:
       # Clean working directory before starting
@@ -190,6 +198,11 @@ jobs:
           sed -i "s|APP_KEY=.*|APP_KEY=${{ secrets.APP_KEY }}|" .env
           sed -i "s|APP_URL=.*|APP_URL=${{ secrets.APP_URL }}|" .env
           sed -i "s|REOON_API_KEY=.*|APP_URL=${{ secrets.REOON_API_KEY }}|" .env
+          sed -i "s|AWS_ACCESS_KEY_ID=.*|APP_URL=${{ secrets.AWS_ACCESS_KEY_ID }}|" .env
+          sed -i "s|AWS_SECRET_ACCESS_KEY=.*|APP_URL=${{ secrets.AWS_SECRET_ACCESS_KEY }}|" .env
+          sed -i "s|AWS_BUCKET=.*|APP_URL=${{ secrets.AWS_BUCKET }}|" .env
+          sed -i "s|AWS_URL=.*|APP_URL=${{ secrets.AWS_URL }}|" .env
+          
 
       # Clear caches
       - name: Clear caches
