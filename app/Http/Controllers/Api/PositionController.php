@@ -35,7 +35,7 @@ class PositionController extends Controller
         $validator = Validator::make($request->all(), [
             'position_name'      => 'required|string|max:255',
             'job_description_id' => 'required|exists:job_descriptions,id',
-            'job_type'           => 'required|in:Full Time,Part Time,Contract',
+            'job_type'           => 'required|in:Full Time,Contract,Internship',
             'work_mode'          => 'required|in:Onsite,Remote,Hybrid',
 
             'city'    => 'nullable|string|max:100',
@@ -141,7 +141,7 @@ class PositionController extends Controller
 
         $validator = Validator::make($request->all(), [
             'position_name' => 'required|string|max:255',
-            'job_type'      => 'required|in:Full Time,Part Time,Contract',
+            'job_type'      => 'required|in:Full Time,Contract,Internship',
             'work_mode'     => 'required|in:Onsite,Remote,Hybrid',
             'status'        => 'required|in:open,closed',
 
