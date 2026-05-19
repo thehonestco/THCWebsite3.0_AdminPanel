@@ -38,26 +38,38 @@ class AccessControlSeeder extends Seeder
          */
         $data = [
             'MIS' => ['Overview','Business','Marketing','Campaigns','Talent Acquisition','Accounts'],
-            'Business' => ['Clients','Leads'],
+            'Business' => ['Clients','Leads','Tenders'],
             'Marketing' => ['Resources','Campaigns','Inbox','Templates'],
             'Talent Acquisition' => ['Positions','Applicants','JD Database'],
             'Accounts' => ['Invoices','Ledgers'],
             'Bottom Menu' => ['User Management','Calendar','Media Center','Settings'],
         ];
 
+        $sectionIndex = 0;
         foreach ($data as $sectionName => $modules) {
-            $section = Section::firstOrCreate(
+            $sectionIndex++;
+
+            $section = Section::updateOrCreate(
                 ['slug' => str($sectionName)->slug()],
-                ['name' => $sectionName]
+                [
+                    'name' => $sectionName,
+                    'sort_order' => $sectionIndex,
+                ]
             );
 
-            foreach ($modules as $mName) {
-                $module = Module::firstOrCreate(
+            $moduleIndex = 0;
+            foreach ($modules as $moduleIndex => $mName) {
+                $moduleIndex++;
+
+                $module = Module::updateOrCreate(
                     [
                         'section_id' => $section->id,
                         'slug' => str($mName)->slug()
                     ],
-                    ['name' => $mName]
+                    [
+                        'name' => $mName,
+                        'sort_order' => $moduleIndex,
+                    ]
                 );
 
                 foreach (Action::all() as $action) {
