@@ -3156,16 +3156,6 @@
                             "mode": "formdata",
                             "formdata": [
                                 {
-                                    "key": "name",
-                                    "type": "text",
-                                    "value": "Homepage Hero Banner"
-                                },
-                                {
-                                    "key": "names[0]",
-                                    "type": "text",
-                                    "value": "Homepage Hero Banner"
-                                },
-                                {
                                     "key": "status",
                                     "type": "text",
                                     "value": "active"
@@ -3210,16 +3200,6 @@
                         "body": {
                             "mode": "formdata",
                             "formdata": [
-                                {
-                                    "key": "name",
-                                    "type": "text",
-                                    "value": "Culture Day Highlights"
-                                },
-                                {
-                                    "key": "names[0]",
-                                    "type": "text",
-                                    "value": "Culture Day Highlights"
-                                },
                                 {
                                     "key": "status",
                                     "type": "text",

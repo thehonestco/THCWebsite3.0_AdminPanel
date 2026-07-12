@@ -30,7 +30,6 @@ class MediaUploadService
                 foreach ($files as $index => $file) {
                     $asset = $this->uploadFile($file, $uploadedBy, [
                         'status' => $options['status'] ?? 'active',
-                        'title' => $options['titles'][$index] ?? $options['name'] ?? null,
                         'metadata' => $options['metadata'] ?? [],
                     ], $storedPaths);
                     $assets->push($asset);
@@ -65,7 +64,7 @@ class MediaUploadService
         $convertedExtension = match ($mediaType) {
             'image' => 'webp',
             'video' => 'webm',
-            default => 'pdf',
+            default => strtolower((string) $file->getClientOriginalExtension()) ?: 'bin',
         };
         $fileName = $baseName . '.' . $convertedExtension;
         $storagePath = $directory . '/' . $fileName;
@@ -78,7 +77,12 @@ class MediaUploadService
         $conversionResult = match ($mediaType) {
             'image' => $this->imageConversionService->convertToWebp($sourcePath, $temporaryTarget),
             'video' => $this->videoConversionService->convertToWebm($sourcePath, $temporaryTarget),
-            default => $this->documentStorageService->preparePdf($sourcePath, $temporaryTarget),
+            default => $this->documentStorageService->passthrough(
+                $sourcePath,
+                $temporaryTarget,
+                $file->getMimeType(),
+                $file->getClientOriginalExtension()
+            ),
         };
 
         $stream = fopen($temporaryTarget, 'r');
@@ -110,7 +114,7 @@ class MediaUploadService
 
         $asset = MediaAsset::create([
             'original_name' => $file->getClientOriginalName(),
-            'title' => ($options['title'] ?? null) ?: pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
+            'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
             'media_type' => $mediaType,
             'status' => $options['status'] ?? 'active',
             'disk' => $this->disk(),
@@ -143,7 +147,7 @@ class MediaUploadService
         $folder = match ($mediaType) {
             'image' => 'images',
             'video' => 'videos',
-            default => 'documents',
+            default => 'files',
         };
 
         return trim((string) config('media.base_directory', 'media-center'), '/')
@@ -171,6 +175,6 @@ class MediaUploadService
             return 'pdf';
         }
 
-        throw new MediaProcessingException('Unsupported media type.');
+        return 'file';
     }
 }

@@ -6,15 +6,15 @@ use App\Exceptions\MediaProcessingException;
 
 class DocumentStorageService
 {
-    public function preparePdf(string $sourcePath, string $targetPath): array
+    public function passthrough(string $sourcePath, string $targetPath, ?string $mimeType, ?string $extension): array
     {
         if (!@copy($sourcePath, $targetPath)) {
-            throw new MediaProcessingException('PDF file could not be prepared for upload.');
+            throw new MediaProcessingException('File could not be prepared for upload.');
         }
 
         return [
-            'mime_type' => 'application/pdf',
-            'extension' => 'pdf',
+            'mime_type' => $mimeType ?: 'application/octet-stream',
+            'extension' => $extension ?: 'bin',
         ];
     }
 }

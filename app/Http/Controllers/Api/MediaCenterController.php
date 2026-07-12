@@ -65,6 +65,7 @@ class MediaCenterController extends Controller
                     ['label' => 'Image', 'value' => 'image'],
                     ['label' => 'Video', 'value' => 'video'],
                     ['label' => 'PDF', 'value' => 'pdf'],
+                    ['label' => 'File', 'value' => 'file'],
                 ],
                 'statuses' => [
                     ['label' => 'All Status', 'value' => null],
@@ -83,8 +84,6 @@ class MediaCenterController extends Controller
                 $request->file('files', []),
                 auth()->id(),
                 [
-                    'name' => $request->validated('name'),
-                    'titles' => $request->validated('names', []),
                     'status' => $request->validated('status', 'active'),
                 ]
             );
@@ -173,9 +172,11 @@ class MediaCenterController extends Controller
             'original_name' => $mediaAsset->original_name,
             'title' => $mediaAsset->title,
             'media_type' => $mediaAsset->media_type,
-            'type_label' => strtoupper($mediaAsset->media_type) === 'PDF'
-                ? 'PDF'
-                : ucfirst($mediaAsset->media_type),
+            'type_label' => match ($mediaAsset->media_type) {
+                'pdf' => 'PDF',
+                'file' => 'File',
+                default => ucfirst($mediaAsset->media_type),
+            },
             'status' => $mediaAsset->status,
             'status_label' => ucfirst($mediaAsset->status),
             'url' => $mediaAsset->url,

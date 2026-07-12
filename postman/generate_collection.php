@@ -820,16 +820,12 @@ $collection['item'][] = [
         ]),
         requestItem('Create Media Asset', 'POST', 'media-center', [
             'body' => formDataBody([
-                ['key' => 'name', 'value' => 'Homepage Hero Banner'],
-                ['key' => 'names[0]', 'value' => 'Homepage Hero Banner'],
                 ['key' => 'status', 'value' => 'active'],
                 ['key' => 'files[0]', 'type' => 'file', 'src' => ''],
             ]),
         ]),
         requestItem('Upload Media Asset Alias', 'POST', 'media-center/upload', [
             'body' => formDataBody([
-                ['key' => 'name', 'value' => 'Culture Day Highlights'],
-                ['key' => 'names[0]', 'value' => 'Culture Day Highlights'],
                 ['key' => 'status', 'value' => 'inactive'],
                 ['key' => 'files[0]', 'type' => 'file', 'src' => ''],
             ]),

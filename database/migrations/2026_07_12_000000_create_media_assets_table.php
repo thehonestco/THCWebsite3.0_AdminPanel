@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('original_name');
             $table->string('title')->nullable();
-            $table->enum('media_type', ['image', 'video']);
+            $table->enum('media_type', ['image', 'video', 'pdf', 'file']);
             $table->string('disk', 50);
             $table->string('directory');
             $table->string('file_name');

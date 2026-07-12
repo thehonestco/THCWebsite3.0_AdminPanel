@@ -97,6 +97,26 @@ class MediaCenterControllerTest extends TestCase
             ->assertJsonCount(1, 'data.data');
     }
 
+    public function test_authenticated_user_can_upload_non_media_file_without_conversion(): void
+    {
+        Storage::fake('s3');
+
+        $user = $this->createSuperAdminUser();
+
+        $response = $this->actingAs($user, 'sanctum')->post('/api/media-center/upload', [
+            'status' => 'active',
+            'files' => [
+                UploadedFile::fake()->createWithContent('guide.txt', 'hello world'),
+            ],
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('data.0.media_type', 'file')
+            ->assertJsonPath('data.0.converted_extension', 'txt')
+            ->assertJsonPath('data.0.title', 'guide');
+    }
+
     protected function createSuperAdminUser(): User
     {
         $role = Role::create(['name' => 'Super Admin']);

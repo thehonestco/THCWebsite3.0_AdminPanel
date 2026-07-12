@@ -26,7 +26,7 @@ return new class extends Migration
             });
 
         if (DB::getDriverName() === 'mysql') {
-            DB::statement("ALTER TABLE media_assets MODIFY media_type ENUM('image', 'video', 'pdf') NOT NULL");
+            DB::statement("ALTER TABLE media_assets MODIFY media_type ENUM('image', 'video', 'pdf', 'file') NOT NULL");
         }
 
         Schema::table('media_assets', function (Blueprint $table) {
