@@ -6,79 +6,97 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        /**
-         * 1️⃣ ADD application-level fields to applications
-         */
-        Schema::table('applications', function (Blueprint $table) {
-            $table->decimal('experience_years', 4, 1)
-                  ->nullable()
-                  ->after('applicant_id');
+        if (!Schema::hasColumn('applications', 'experience_years')) {
+            Schema::table('applications', function (Blueprint $table) {
+                $table->decimal('experience_years', 4, 1)->nullable()->after('applicant_id');
+            });
+        }
 
-            $table->unsignedInteger('current_ctc')
-                  ->nullable()
-                  ->after('experience_years');
+        if (!Schema::hasColumn('applications', 'current_ctc')) {
+            Schema::table('applications', function (Blueprint $table) {
+                $table->unsignedInteger('current_ctc')->nullable()->after('experience_years');
+            });
+        }
 
-            $table->unsignedInteger('expected_ctc')
-                  ->nullable()
-                  ->after('current_ctc');
+        if (!Schema::hasColumn('applications', 'expected_ctc')) {
+            Schema::table('applications', function (Blueprint $table) {
+                $table->unsignedInteger('expected_ctc')->nullable()->after('current_ctc');
+            });
+        }
 
-            $table->unsignedInteger('notice_period_days')
-                  ->nullable()
-                  ->after('expected_ctc');
+        if (!Schema::hasColumn('applications', 'notice_period_days')) {
+            Schema::table('applications', function (Blueprint $table) {
+                $table->unsignedInteger('notice_period_days')->nullable()->after('expected_ctc');
+            });
+        }
 
-            $table->timestamp('last_contact_at')
-                  ->nullable()
-                  ->after('stage');
-        });
+        if (!Schema::hasColumn('applications', 'last_contact_at')) {
+            Schema::table('applications', function (Blueprint $table) {
+                $table->timestamp('last_contact_at')->nullable()->after('stage');
+            });
+        }
 
-        /**
-         * 2️⃣ REMOVE wrongly placed fields from applicants
-         */
-        Schema::table('applicants', function (Blueprint $table) {
-            if (Schema::hasColumn('applicants', 'experience_years')) {
-                $table->dropColumn([
-                    'experience_years',
-                    'current_ctc',
-                    'expected_ctc',
-                    'notice_period_days',
-                    'last_contact_at',
-                ]);
-            }
-        });
+        $applicantColumnsToDrop = array_values(array_filter([
+            Schema::hasColumn('applicants', 'experience_years') ? 'experience_years' : null,
+            Schema::hasColumn('applicants', 'current_ctc') ? 'current_ctc' : null,
+            Schema::hasColumn('applicants', 'expected_ctc') ? 'expected_ctc' : null,
+            Schema::hasColumn('applicants', 'notice_period_days') ? 'notice_period_days' : null,
+            Schema::hasColumn('applicants', 'last_contact_at') ? 'last_contact_at' : null,
+        ]));
+
+        if ($applicantColumnsToDrop !== []) {
+            Schema::table('applicants', function (Blueprint $table) use ($applicantColumnsToDrop) {
+                $table->dropColumn($applicantColumnsToDrop);
+            });
+        }
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        /**
-         * 1️⃣ RESTORE fields back to applicants
-         */
-        Schema::table('applicants', function (Blueprint $table) {
-            $table->unsignedTinyInteger('experience_years')->nullable();
-            $table->unsignedInteger('current_ctc')->nullable();
-            $table->unsignedInteger('expected_ctc')->nullable();
-            $table->unsignedInteger('notice_period_days')->nullable();
-            $table->timestamp('last_contact_at')->nullable();
-        });
+        if (!Schema::hasColumn('applicants', 'experience_years')) {
+            Schema::table('applicants', function (Blueprint $table) {
+                $table->unsignedTinyInteger('experience_years')->nullable();
+            });
+        }
 
-        /**
-         * 2️⃣ REMOVE fields from applications
-         */
-        Schema::table('applications', function (Blueprint $table) {
-            $table->dropColumn([
-                'experience_years',
-                'current_ctc',
-                'expected_ctc',
-                'notice_period_days',
-                'last_contact_at',
-            ]);
-        });
+        if (!Schema::hasColumn('applicants', 'current_ctc')) {
+            Schema::table('applicants', function (Blueprint $table) {
+                $table->unsignedInteger('current_ctc')->nullable();
+            });
+        }
+
+        if (!Schema::hasColumn('applicants', 'expected_ctc')) {
+            Schema::table('applicants', function (Blueprint $table) {
+                $table->unsignedInteger('expected_ctc')->nullable();
+            });
+        }
+
+        if (!Schema::hasColumn('applicants', 'notice_period_days')) {
+            Schema::table('applicants', function (Blueprint $table) {
+                $table->unsignedInteger('notice_period_days')->nullable();
+            });
+        }
+
+        if (!Schema::hasColumn('applicants', 'last_contact_at')) {
+            Schema::table('applicants', function (Blueprint $table) {
+                $table->timestamp('last_contact_at')->nullable();
+            });
+        }
+
+        $applicationColumnsToDrop = array_values(array_filter([
+            Schema::hasColumn('applications', 'experience_years') ? 'experience_years' : null,
+            Schema::hasColumn('applications', 'current_ctc') ? 'current_ctc' : null,
+            Schema::hasColumn('applications', 'expected_ctc') ? 'expected_ctc' : null,
+            Schema::hasColumn('applications', 'notice_period_days') ? 'notice_period_days' : null,
+            Schema::hasColumn('applications', 'last_contact_at') ? 'last_contact_at' : null,
+        ]));
+
+        if ($applicationColumnsToDrop !== []) {
+            Schema::table('applications', function (Blueprint $table) use ($applicationColumnsToDrop) {
+                $table->dropColumn($applicationColumnsToDrop);
+            });
+        }
     }
 };

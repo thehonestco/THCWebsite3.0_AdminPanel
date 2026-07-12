@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\PublicLeadController;
 use App\Http\Controllers\Api\PublicJobController;
 use App\Http\Controllers\Api\TemplateController;
 use App\Http\Controllers\Api\SmtpSettingController;
+use App\Http\Controllers\Api\MediaCenterController;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/public/lead', [PublicLeadController::class, 'store'])
@@ -351,4 +352,35 @@ Route::middleware('auth:sanctum')->group(function () {
         '/smtp-settings/{id}',
         [SmtpSettingController::class, 'destroy']
     )->middleware('perm:accounts.invoices.delete');
+
+    // Media Center
+    Route::get(
+        '/media-center',
+        [MediaCenterController::class, 'index']
+    )->middleware('perm:bottom-menu.media-center.view');
+
+    Route::post(
+        '/media-center',
+        [MediaCenterController::class, 'store']
+    )->middleware('perm:bottom-menu.media-center.add');
+
+    Route::post(
+        '/media-center/upload',
+        [MediaCenterController::class, 'store']
+    )->middleware('perm:bottom-menu.media-center.add');
+
+    Route::get(
+        '/media-center/{id}',
+        [MediaCenterController::class, 'show']
+    )->middleware('perm:bottom-menu.media-center.view');
+
+    Route::delete(
+        '/media-center/{id}',
+        [MediaCenterController::class, 'destroy']
+    )->middleware('perm:bottom-menu.media-center.delete');
+
+    Route::patch(
+        '/media-center/{id}/status',
+        [MediaCenterController::class, 'updateStatus']
+    )->middleware('perm:bottom-menu.media-center.edit');
 });

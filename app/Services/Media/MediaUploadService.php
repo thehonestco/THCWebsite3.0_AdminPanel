@@ -1,0 +1,176 @@
+<?php
+
+namespace App\Services\Media;
+
+use App\Exceptions\MediaProcessingException;
+use App\Models\MediaAsset;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
+class MediaUploadService
+{
+    public function __construct(
+        protected ImageConversionService $imageConversionService,
+        protected VideoConversionService $videoConversionService,
+        protected DocumentStorageService $documentStorageService
+    ) {
+    }
+
+    public function uploadMany(array $files, ?int $uploadedBy = null, array $options = []): Collection
+    {
+        $storedPaths = [];
+
+        return DB::transaction(function () use ($files, $uploadedBy, $options, &$storedPaths) {
+            try {
+                $assets = collect();
+
+                foreach ($files as $index => $file) {
+                    $asset = $this->uploadFile($file, $uploadedBy, [
+                        'status' => $options['status'] ?? 'active',
+                        'title' => $options['titles'][$index] ?? $options['name'] ?? null,
+                        'metadata' => $options['metadata'] ?? [],
+                    ], $storedPaths);
+                    $assets->push($asset);
+                }
+
+                return $assets;
+            } catch (\Throwable $exception) {
+                foreach ($storedPaths as $storedPath) {
+                    Storage::disk($this->disk())->delete($storedPath);
+                }
+
+                throw $exception;
+            }
+        });
+    }
+
+    public function uploadFile(
+        UploadedFile $file,
+        ?int $uploadedBy = null,
+        array $options = [],
+        array &$storedPaths = []
+    ): MediaAsset {
+        $sourcePath = $file->getRealPath();
+
+        if (!$sourcePath) {
+            throw new MediaProcessingException('Uploaded file could not be processed.');
+        }
+
+        $mediaType = $this->determineMediaType($file);
+        $directory = $this->buildDirectory($mediaType);
+        $baseName = Str::lower(Str::uuid()->toString());
+        $convertedExtension = match ($mediaType) {
+            'image' => 'webp',
+            'video' => 'webm',
+            default => 'pdf',
+        };
+        $fileName = $baseName . '.' . $convertedExtension;
+        $storagePath = $directory . '/' . $fileName;
+        $temporaryTarget = storage_path('app/tmp/' . $fileName);
+
+        if (!is_dir(dirname($temporaryTarget))) {
+            mkdir(dirname($temporaryTarget), 0777, true);
+        }
+
+        $conversionResult = match ($mediaType) {
+            'image' => $this->imageConversionService->convertToWebp($sourcePath, $temporaryTarget),
+            'video' => $this->videoConversionService->convertToWebm($sourcePath, $temporaryTarget),
+            default => $this->documentStorageService->preparePdf($sourcePath, $temporaryTarget),
+        };
+
+        $stream = fopen($temporaryTarget, 'r');
+
+        if (!$stream) {
+            @unlink($temporaryTarget);
+            throw new MediaProcessingException('Converted media file could not be opened for upload.');
+        }
+
+        $uploaded = Storage::disk($this->disk())->put(
+            $storagePath,
+            $stream,
+            [
+                'ContentType' => $conversionResult['mime_type'],
+            ]
+        );
+
+        fclose($stream);
+
+        if (!$uploaded) {
+            @unlink($temporaryTarget);
+            throw new MediaProcessingException('Converted media file could not be uploaded to storage.');
+        }
+
+        $storedPaths[] = $storagePath;
+        $sizeBytes = filesize($temporaryTarget) ?: 0;
+        $url = Storage::disk($this->disk())->url($storagePath);
+        @unlink($temporaryTarget);
+
+        $asset = MediaAsset::create([
+            'original_name' => $file->getClientOriginalName(),
+            'title' => ($options['title'] ?? null) ?: pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
+            'media_type' => $mediaType,
+            'status' => $options['status'] ?? 'active',
+            'disk' => $this->disk(),
+            'directory' => $directory,
+            'file_name' => $fileName,
+            'path' => $storagePath,
+            'url' => $url,
+            'source_extension' => strtolower((string) $file->getClientOriginalExtension()),
+            'source_mime_type' => $file->getMimeType(),
+            'converted_extension' => $conversionResult['extension'],
+            'converted_mime_type' => $conversionResult['mime_type'],
+            'size_bytes' => $sizeBytes,
+            'width' => $conversionResult['width'] ?? null,
+            'height' => $conversionResult['height'] ?? null,
+            'duration_seconds' => $conversionResult['duration_seconds'] ?? null,
+            'processing_status' => 'ready',
+            'metadata' => ($options['metadata'] ?? []) ?: null,
+            'created_by' => $uploadedBy,
+        ]);
+
+        $asset->update([
+            'media_code' => 'MC-' . str_pad((string) $asset->id, 3, '0', STR_PAD_LEFT),
+        ]);
+
+        return $asset->fresh();
+    }
+
+    protected function buildDirectory(string $mediaType): string
+    {
+        $folder = match ($mediaType) {
+            'image' => 'images',
+            'video' => 'videos',
+            default => 'documents',
+        };
+
+        return trim((string) config('media.base_directory', 'media-center'), '/')
+            . '/' . $folder . '/' . now()->format('Y/m');
+    }
+
+    protected function disk(): string
+    {
+        return (string) config('media.disk', config('filesystems.default'));
+    }
+
+    protected function determineMediaType(UploadedFile $file): string
+    {
+        $mimeType = (string) $file->getMimeType();
+
+        if (str_starts_with($mimeType, 'image/')) {
+            return 'image';
+        }
+
+        if (str_starts_with($mimeType, 'video/')) {
+            return 'video';
+        }
+
+        if ($mimeType === 'application/pdf') {
+            return 'pdf';
+        }
+
+        throw new MediaProcessingException('Unsupported media type.');
+    }
+}
