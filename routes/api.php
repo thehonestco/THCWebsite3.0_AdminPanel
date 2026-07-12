@@ -354,6 +354,11 @@ Route::middleware('auth:sanctum')->group(function () {
         [ResourceController::class, 'update']
     )->middleware('perm:marketing.resources.edit');
 
+    Route::post(
+        '/resources/{id}',
+        [ResourceController::class, 'update']
+    )->middleware('perm:marketing.resources.edit');
+
     Route::delete(
         '/resources/{id}',
         [ResourceController::class, 'destroy']

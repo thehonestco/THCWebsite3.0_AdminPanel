@@ -661,7 +661,7 @@ $collection['item'][] = [
             ]),
         ]),
         requestItem('Show Resource', 'GET', 'resources/{{resource_id}}'),
-        requestItem('Update Resource', 'PUT', 'resources/{{resource_id}}', [
+        requestItem('Update Resource', 'POST', 'resources/{{resource_id}}', [
             'body' => formDataBody([
                 ['key' => 'resource_type', 'value' => 'our-work'],
                 ['key' => 'sub_industry', 'value' => 'sub-cat-b'],

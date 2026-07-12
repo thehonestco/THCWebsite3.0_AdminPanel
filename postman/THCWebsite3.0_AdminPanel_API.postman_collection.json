@@ -2590,7 +2590,7 @@
                 {
                     "name": "Update Resource",
                     "request": {
-                        "method": "PUT",
+                        "method": "POST",
                         "header": [],
                         "url": {
                             "raw": "{{base_url}}/resources/{{resource_id}}",
