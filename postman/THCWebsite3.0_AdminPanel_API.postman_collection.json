@@ -75,6 +75,10 @@
             "value": "1"
         },
         {
+            "key": "resource_id",
+            "value": "1"
+        },
+        {
             "key": "editor_id",
             "value": "1"
         },
@@ -2374,6 +2378,308 @@
                             "path": [
                                 "invoices",
                                 "{{invoice_id}}"
+                            ],
+                            "query": []
+                        },
+                        "description": "",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{bearer_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Resources",
+            "item": [
+                {
+                    "name": "Resources Metadata",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/resources/metadata",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "resources",
+                                "metadata"
+                            ],
+                            "query": []
+                        },
+                        "description": "",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{bearer_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "List Resources",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/resources?search=&category=our-work&status=draft&edited_by=%7B%7Beditor_id%7D%7D&date_from=&date_to=&per_page=10",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "resources"
+                            ],
+                            "query": [
+                                {
+                                    "key": "search",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "category",
+                                    "value": "our-work"
+                                },
+                                {
+                                    "key": "status",
+                                    "value": "draft"
+                                },
+                                {
+                                    "key": "edited_by",
+                                    "value": "{{editor_id}}"
+                                },
+                                {
+                                    "key": "date_from",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "date_to",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "per_page",
+                                    "value": "10"
+                                }
+                            ]
+                        },
+                        "description": "",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{bearer_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Resource",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/resources",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "resources"
+                            ],
+                            "query": []
+                        },
+                        "description": "",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{bearer_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "resource_type",
+                                    "type": "text",
+                                    "value": "our-work"
+                                },
+                                {
+                                    "key": "sub_industry",
+                                    "type": "text",
+                                    "value": "sub-cat-a"
+                                },
+                                {
+                                    "key": "sub_service",
+                                    "type": "text",
+                                    "value": "sub-menu-a"
+                                },
+                                {
+                                    "key": "listing_title",
+                                    "type": "text",
+                                    "value": "P2P Money Remittance Mobile Application"
+                                },
+                                {
+                                    "key": "listing_description",
+                                    "type": "text",
+                                    "value": "To Peer Payments Through Money Remittance Platforms."
+                                },
+                                {
+                                    "key": "status",
+                                    "type": "text",
+                                    "value": "draft"
+                                },
+                                {
+                                    "key": "listing_image",
+                                    "type": "file",
+                                    "src": ""
+                                },
+                                {
+                                    "key": "resource_payload",
+                                    "type": "text",
+                                    "value": "{\"resourceType\":\"our-work\",\"sections\":[{\"id\":\"breadcrumb-section\",\"type\":\"breadcrumb\",\"content\":{\"items\":[\"Portfolio Projects\",\"P2P Money Remittance Mobile Application\"]}},{\"id\":\"portfolio-hero-section\",\"type\":\"portfolioHero\",\"content\":{\"title\":\"To Peer Payments Through Money Remittance Platforms.\",\"tags\":[\"P2P Payments\",\"Mobile Wallet Applications\"],\"categories\":[\"Banking & Finance\",\"Mobile Apps\"]}},{\"id\":\"portfolio-banner-section\",\"type\":\"portfolioBanner\",\"content\":{\"image\":\"\",\"recommendedSize\":\"1920 x 600\"}}]}"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Show Resource",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/resources/{{resource_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "resources",
+                                "{{resource_id}}"
+                            ],
+                            "query": []
+                        },
+                        "description": "",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{bearer_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Resource",
+                    "request": {
+                        "method": "PUT",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/resources/{{resource_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "resources",
+                                "{{resource_id}}"
+                            ],
+                            "query": []
+                        },
+                        "description": "",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{bearer_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "resource_type",
+                                    "type": "text",
+                                    "value": "our-work"
+                                },
+                                {
+                                    "key": "sub_industry",
+                                    "type": "text",
+                                    "value": "sub-cat-b"
+                                },
+                                {
+                                    "key": "sub_service",
+                                    "type": "text",
+                                    "value": "sub-menu-b"
+                                },
+                                {
+                                    "key": "listing_title",
+                                    "type": "text",
+                                    "value": "Updated P2P Money Remittance Mobile Application"
+                                },
+                                {
+                                    "key": "listing_description",
+                                    "type": "text",
+                                    "value": "Updated listing description for frontend use."
+                                },
+                                {
+                                    "key": "status",
+                                    "type": "text",
+                                    "value": "published"
+                                },
+                                {
+                                    "key": "listing_image",
+                                    "type": "file",
+                                    "src": ""
+                                },
+                                {
+                                    "key": "resource_payload",
+                                    "type": "text",
+                                    "value": "{\"resourceType\":\"our-work\",\"sections\":[{\"id\":\"breadcrumb-section\",\"type\":\"breadcrumb\",\"content\":{\"items\":[\"Portfolio Projects\",\"Updated P2P Money Remittance Mobile Application\"]}},{\"id\":\"edge-section\",\"type\":\"edge\",\"content\":{\"title\":\"The Honest Edge\",\"description1\":\"We work with clients across a range of industries.\",\"description2\":\"Description 2\",\"image\":\"\"}}]}"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Resource",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/resources/{{resource_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "resources",
+                                "{{resource_id}}"
                             ],
                             "query": []
                         },

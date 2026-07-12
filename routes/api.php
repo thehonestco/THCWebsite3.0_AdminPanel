@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\PublicJobController;
 use App\Http\Controllers\Api\TemplateController;
 use App\Http\Controllers\Api\SmtpSettingController;
 use App\Http\Controllers\Api\MediaCenterController;
+use App\Http\Controllers\Api\ResourceController;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/public/lead', [PublicLeadController::class, 'store'])
@@ -326,6 +327,37 @@ Route::middleware('auth:sanctum')->group(function () {
         '/templates/{id}',
         [TemplateController::class, 'destroy']
     )->middleware('perm:marketing.templates.delete');
+
+    // Resources
+    Route::get(
+        '/resources/metadata',
+        [ResourceController::class, 'metadata']
+    )->middleware('perm:marketing.resources.view');
+
+    Route::get(
+        '/resources',
+        [ResourceController::class, 'index']
+    )->middleware('perm:marketing.resources.view');
+
+    Route::post(
+        '/resources',
+        [ResourceController::class, 'store']
+    )->middleware('perm:marketing.resources.add');
+
+    Route::get(
+        '/resources/{id}',
+        [ResourceController::class, 'show']
+    )->middleware('perm:marketing.resources.view');
+
+    Route::put(
+        '/resources/{id}',
+        [ResourceController::class, 'update']
+    )->middleware('perm:marketing.resources.edit');
+
+    Route::delete(
+        '/resources/{id}',
+        [ResourceController::class, 'destroy']
+    )->middleware('perm:marketing.resources.delete');
 
     // SMTP Settings
     Route::get(

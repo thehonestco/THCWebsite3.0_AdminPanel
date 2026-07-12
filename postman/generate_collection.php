@@ -164,6 +164,7 @@ $collection = [
         ['key' => 'template_id', 'value' => '1'],
         ['key' => 'smtp_id', 'value' => '1'],
         ['key' => 'media_id', 'value' => '1'],
+        ['key' => 'resource_id', 'value' => '1'],
         ['key' => 'editor_id', 'value' => '1'],
         ['key' => 'job_id', 'value' => '1'],
     ],
@@ -630,6 +631,111 @@ $collection['item'][] = [
         ]),
         requestItem('Show Invoice', 'GET', 'invoices/{{invoice_id}}'),
         requestItem('Delete Invoice', 'DELETE', 'invoices/{{invoice_id}}'),
+    ],
+];
+
+$collection['item'][] = [
+    'name' => 'Resources',
+    'item' => [
+        requestItem('Resources Metadata', 'GET', 'resources/metadata'),
+        requestItem('List Resources', 'GET', 'resources', [
+            'query' => [
+                'search' => '',
+                'category' => 'our-work',
+                'status' => 'draft',
+                'edited_by' => '{{editor_id}}',
+                'date_from' => '',
+                'date_to' => '',
+                'per_page' => '10',
+            ],
+        ]),
+        requestItem('Create Resource', 'POST', 'resources', [
+            'body' => formDataBody([
+                ['key' => 'resource_type', 'value' => 'our-work'],
+                ['key' => 'sub_industry', 'value' => 'sub-cat-a'],
+                ['key' => 'sub_service', 'value' => 'sub-menu-a'],
+                ['key' => 'listing_title', 'value' => 'P2P Money Remittance Mobile Application'],
+                ['key' => 'listing_description', 'value' => 'To Peer Payments Through Money Remittance Platforms.'],
+                ['key' => 'status', 'value' => 'draft'],
+                ['key' => 'listing_image', 'type' => 'file', 'src' => ''],
+                ['key' => 'resource_payload', 'value' => json_encode([
+                    'resourceType' => 'our-work',
+                    'sections' => [
+                        [
+                            'id' => 'breadcrumb-section',
+                            'type' => 'breadcrumb',
+                            'content' => [
+                                'items' => [
+                                    'Portfolio Projects',
+                                    'P2P Money Remittance Mobile Application',
+                                ],
+                            ],
+                        ],
+                        [
+                            'id' => 'portfolio-hero-section',
+                            'type' => 'portfolioHero',
+                            'content' => [
+                                'title' => 'To Peer Payments Through Money Remittance Platforms.',
+                                'tags' => [
+                                    'P2P Payments',
+                                    'Mobile Wallet Applications',
+                                ],
+                                'categories' => [
+                                    'Banking & Finance',
+                                    'Mobile Apps',
+                                ],
+                            ],
+                        ],
+                        [
+                            'id' => 'portfolio-banner-section',
+                            'type' => 'portfolioBanner',
+                            'content' => [
+                                'image' => '',
+                                'recommendedSize' => '1920 x 600',
+                            ],
+                        ],
+                    ],
+                ], JSON_UNESCAPED_SLASHES)],
+            ]),
+        ]),
+        requestItem('Show Resource', 'GET', 'resources/{{resource_id}}'),
+        requestItem('Update Resource', 'PUT', 'resources/{{resource_id}}', [
+            'body' => formDataBody([
+                ['key' => 'resource_type', 'value' => 'our-work'],
+                ['key' => 'sub_industry', 'value' => 'sub-cat-b'],
+                ['key' => 'sub_service', 'value' => 'sub-menu-b'],
+                ['key' => 'listing_title', 'value' => 'Updated P2P Money Remittance Mobile Application'],
+                ['key' => 'listing_description', 'value' => 'Updated listing description for frontend use.'],
+                ['key' => 'status', 'value' => 'published'],
+                ['key' => 'listing_image', 'type' => 'file', 'src' => ''],
+                ['key' => 'resource_payload', 'value' => json_encode([
+                    'resourceType' => 'our-work',
+                    'sections' => [
+                        [
+                            'id' => 'breadcrumb-section',
+                            'type' => 'breadcrumb',
+                            'content' => [
+                                'items' => [
+                                    'Portfolio Projects',
+                                    'Updated P2P Money Remittance Mobile Application',
+                                ],
+                            ],
+                        ],
+                        [
+                            'id' => 'edge-section',
+                            'type' => 'edge',
+                            'content' => [
+                                'title' => 'The Honest Edge',
+                                'description1' => 'We work with clients across a range of industries.',
+                                'description2' => 'Description 2',
+                                'image' => '',
+                            ],
+                        ],
+                    ],
+                ], JSON_UNESCAPED_SLASHES)],
+            ]),
+        ]),
+        requestItem('Delete Resource', 'DELETE', 'resources/{{resource_id}}'),
     ],
 ];
 
