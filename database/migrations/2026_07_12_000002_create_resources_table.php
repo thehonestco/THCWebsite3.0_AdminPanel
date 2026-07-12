@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('listing_image_url')->nullable();
             $table->foreignId('listing_image_media_id')->nullable()->constrained('media_assets')->nullOnDelete();
             $table->enum('status', ['draft', 'published', 'archived'])->default('draft');
-            $table->json('resource_payload');
+            $table->json('resource_payload')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

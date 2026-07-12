@@ -104,7 +104,7 @@ class ResourceController extends Controller
                 'listing_description' => $request->validated('listing_description'),
                 'listing_image_url' => $mediaAsset?->url,
                 'listing_image_media_id' => $mediaAsset?->id,
-                'status' => $request->validated('status'),
+                'status' => $request->validated('status', 'draft'),
                 'resource_payload' => $request->validated('resource_payload'),
                 'created_by' => auth()->id(),
                 'updated_by' => auth()->id(),
@@ -165,15 +165,15 @@ class ResourceController extends Controller
             }
 
             $resource->update([
-                'resource_type' => $request->validated('resource_type'),
-                'sub_industry' => $request->validated('sub_industry'),
-                'sub_service' => $request->validated('sub_service'),
-                'listing_title' => $request->validated('listing_title'),
-                'listing_description' => $request->validated('listing_description'),
+                'resource_type' => $request->validated('resource_type', $resource->resource_type),
+                'sub_industry' => $request->validated('sub_industry', $resource->sub_industry),
+                'sub_service' => $request->validated('sub_service', $resource->sub_service),
+                'listing_title' => $request->validated('listing_title', $resource->listing_title),
+                'listing_description' => $request->validated('listing_description', $resource->listing_description),
                 'listing_image_url' => $mediaAsset?->url,
                 'listing_image_media_id' => $mediaAsset?->id,
-                'status' => $request->validated('status'),
-                'resource_payload' => $request->validated('resource_payload'),
+                'status' => $request->validated('status', $resource->status),
+                'resource_payload' => $request->validated('resource_payload', $resource->resource_payload),
                 'updated_by' => auth()->id(),
             ]);
 

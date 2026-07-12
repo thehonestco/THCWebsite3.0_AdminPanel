@@ -8,6 +8,12 @@ class StoreResourceRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
+        if ($this->isMethod('post') && !$this->filled('status')) {
+            $this->merge([
+                'status' => 'draft',
+            ]);
+        }
+
         $payload = $this->input('resource_payload');
 
         if (is_string($payload)) {
@@ -31,18 +37,19 @@ class StoreResourceRequest extends FormRequest
         $typeKeys = implode(',', array_keys(config('resources.types', [])));
         $subIndustryKeys = implode(',', array_keys(config('resources.sub_industries', [])));
         $subServiceKeys = implode(',', array_keys(config('resources.sub_services', [])));
+        $isCreate = $this->isMethod('post');
 
         return [
-            'resource_type' => 'required|in:' . $typeKeys,
+            'resource_type' => ($isCreate ? 'required' : 'sometimes|required') . '|in:' . $typeKeys,
             'sub_industry' => 'nullable|in:' . $subIndustryKeys,
             'sub_service' => 'nullable|in:' . $subServiceKeys,
-            'listing_title' => 'required|string|max:255',
+            'listing_title' => ($isCreate ? 'required' : 'sometimes|required') . '|string|max:255',
             'listing_description' => 'nullable|string',
-            'status' => 'required|in:draft,published,archived',
+            'status' => 'nullable|in:draft,published,archived',
             'listing_image' => 'nullable|file|mimetypes:image/jpeg,image/png,image/gif,image/webp,image/bmp|max:10240',
-            'resource_payload' => 'required|array',
-            'resource_payload.resourceType' => 'required|string|max:100',
-            'resource_payload.sections' => 'required|array|min:1',
+            'resource_payload' => 'nullable|array',
+            'resource_payload.resourceType' => 'required_with:resource_payload|string|max:100',
+            'resource_payload.sections' => 'required_with:resource_payload|array|min:1',
         ];
     }
 }

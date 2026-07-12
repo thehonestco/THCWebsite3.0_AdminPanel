@@ -658,44 +658,6 @@ $collection['item'][] = [
                 ['key' => 'listing_description', 'value' => 'To Peer Payments Through Money Remittance Platforms.'],
                 ['key' => 'status', 'value' => 'draft'],
                 ['key' => 'listing_image', 'type' => 'file', 'src' => ''],
-                ['key' => 'resource_payload', 'value' => json_encode([
-                    'resourceType' => 'our-work',
-                    'sections' => [
-                        [
-                            'id' => 'breadcrumb-section',
-                            'type' => 'breadcrumb',
-                            'content' => [
-                                'items' => [
-                                    'Portfolio Projects',
-                                    'P2P Money Remittance Mobile Application',
-                                ],
-                            ],
-                        ],
-                        [
-                            'id' => 'portfolio-hero-section',
-                            'type' => 'portfolioHero',
-                            'content' => [
-                                'title' => 'To Peer Payments Through Money Remittance Platforms.',
-                                'tags' => [
-                                    'P2P Payments',
-                                    'Mobile Wallet Applications',
-                                ],
-                                'categories' => [
-                                    'Banking & Finance',
-                                    'Mobile Apps',
-                                ],
-                            ],
-                        ],
-                        [
-                            'id' => 'portfolio-banner-section',
-                            'type' => 'portfolioBanner',
-                            'content' => [
-                                'image' => '',
-                                'recommendedSize' => '1920 x 600',
-                            ],
-                        ],
-                    ],
-                ], JSON_UNESCAPED_SLASHES)],
             ]),
         ]),
         requestItem('Show Resource', 'GET', 'resources/{{resource_id}}'),
