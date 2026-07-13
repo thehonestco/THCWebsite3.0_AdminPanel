@@ -185,6 +185,18 @@ Route::middleware('auth:sanctum')->group(function () {
         '/leads/{id}',
         [LeadController::class, 'destroy']
     )->middleware('perm:business.leads.delete');
+    Route::post(
+        '/leads/bulk-upload',
+        [LeadController::class, 'bulkUpload']
+    )->middleware('perm:business.leads.add');
+    Route::post(
+        '/leads/{id}/convert',
+        [LeadController::class, 'convert']
+    )->middleware('perm:business.leads.edit');
+        Route::get(
+        '/clients',
+        [LeadController::class, 'clients']
+    )->middleware('perm:business.clients.view');
 
     Route::post(
         '/leads/bulk-upload',
