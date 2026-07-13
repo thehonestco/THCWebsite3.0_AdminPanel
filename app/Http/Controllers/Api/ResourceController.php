@@ -7,6 +7,7 @@ use App\Http\Requests\Api\ListResourceRequest;
 use App\Http\Requests\Api\StoreResourceRequest;
 use App\Models\Resource;
 use App\Services\Media\MediaUploadService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
@@ -37,7 +38,8 @@ class ResourceController extends Controller
     {
         $query = Resource::query()
             ->with(['editor:id,name'])
-            ->latest('updated_at');
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
 
         if ($search = $request->validated('search')) {
             $query->where('listing_title', 'like', '%' . $search . '%');
@@ -56,11 +58,11 @@ class ResourceController extends Controller
         }
 
         if ($dateFrom = $request->validated('date_from')) {
-            $query->whereDate('updated_at', '>=', $dateFrom);
+            $query->where('updated_at', '>=', Carbon::parse($dateFrom)->startOfDay());
         }
 
         if ($dateTo = $request->validated('date_to')) {
-            $query->whereDate('updated_at', '<=', $dateTo);
+            $query->where('updated_at', '<=', Carbon::parse($dateTo)->endOfDay());
         }
 
         $resources = $query->paginate((int) $request->validated('per_page', 10));
