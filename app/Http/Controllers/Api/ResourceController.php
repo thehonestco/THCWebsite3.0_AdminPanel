@@ -213,6 +213,8 @@ class ResourceController extends Controller
             'category' => config('resources.types.' . $resource->resource_type, $resource->resource_type),
             'category_value' => $resource->resource_type,
             'title' => $resource->listing_title,
+            'listing_description' => $resource->listing_description,
+            'listing_image_url' => $resource->listing_image_url,
             'last_edited' => optional($resource->updated_at)->format('d/m/Y'),
             'last_edited_by' => $resource->editor?->name,
             'status' => config('resources.statuses.' . $resource->status, ucfirst($resource->status)),

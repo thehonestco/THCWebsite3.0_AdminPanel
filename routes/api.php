@@ -26,6 +26,9 @@ Route::get('/public/jobs', [PublicJobController::class, 'index']);
 Route::get('/public/jobs/{id}', [PublicJobController::class, 'show']);
 Route::post('/public/jobs/{positionId}/apply', [PublicJobController::class, 'apply']
 )->middleware('throttle:10,1');
+Route::get('/resources/metadata', [ResourceController::class, 'metadata']);
+Route::get('/resources', [ResourceController::class, 'index']);
+Route::get('/resources/{id}', [ResourceController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -329,25 +332,10 @@ Route::middleware('auth:sanctum')->group(function () {
     )->middleware('perm:marketing.templates.delete');
 
     // Resources
-    Route::get(
-        '/resources/metadata',
-        [ResourceController::class, 'metadata']
-    )->middleware('perm:marketing.resources.view');
-
-    Route::get(
-        '/resources',
-        [ResourceController::class, 'index']
-    )->middleware('perm:marketing.resources.view');
-
     Route::post(
         '/resources',
         [ResourceController::class, 'store']
     )->middleware('perm:marketing.resources.add');
-
-    Route::get(
-        '/resources/{id}',
-        [ResourceController::class, 'show']
-    )->middleware('perm:marketing.resources.view');
 
     Route::put(
         '/resources/{id}',
