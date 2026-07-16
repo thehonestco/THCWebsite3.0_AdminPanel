@@ -7,8 +7,10 @@ use App\Http\Requests\Api\ListResourceRequest;
 use App\Http\Requests\Api\StoreResourceRequest;
 use App\Models\Resource;
 use App\Services\Media\MediaUploadService;
+use App\Services\Resources\ResourcePayloadImageService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 
 class ResourceController extends Controller
@@ -78,46 +80,74 @@ class ResourceController extends Controller
         ]);
     }
 
-    public function store(StoreResourceRequest $request, MediaUploadService $mediaUploadService): JsonResponse
+    public function store(
+        StoreResourceRequest $request,
+        MediaUploadService $mediaUploadService,
+        ResourcePayloadImageService $resourcePayloadImageService
+    ): JsonResponse
     {
-        return DB::transaction(function () use ($request, $mediaUploadService) {
-            $mediaAsset = null;
+        $storedPaths = [];
 
-            if ($request->hasFile('listing_image')) {
-                $mediaAsset = $mediaUploadService->uploadFile(
-                    $request->file('listing_image'),
+        try {
+            return DB::transaction(function () use (
+                $request,
+                $mediaUploadService,
+                $resourcePayloadImageService,
+                &$storedPaths
+            ) {
+                $mediaAsset = null;
+
+                if ($request->hasFile('listing_image')) {
+                    $mediaAsset = $mediaUploadService->uploadFile(
+                        $request->file('listing_image'),
+                        auth()->id(),
+                        [
+                            'status' => 'active',
+                            'title' => $request->validated('listing_title'),
+                            'metadata' => [
+                                'module' => 'resources',
+                                'field' => 'listing_image',
+                            ],
+                        ],
+                        $storedPaths
+                    );
+                }
+
+                $resourcePayload = $resourcePayloadImageService->replaceBase64ImagesWithUrls(
+                    $request->validated('resource_payload'),
                     auth()->id(),
                     [
                         'status' => 'active',
                         'title' => $request->validated('listing_title'),
-                        'metadata' => [
-                            'module' => 'resources',
-                            'field' => 'listing_image',
-                        ],
-                    ]
+                    ],
+                    $storedPaths
                 );
-            }
 
-            $resource = Resource::create([
-                'resource_type' => $request->validated('resource_type'),
-                'sub_industry' => $request->validated('sub_industry'),
-                'sub_service' => $request->validated('sub_service'),
-                'listing_title' => $request->validated('listing_title'),
-                'listing_description' => $request->validated('listing_description'),
-                'listing_image_url' => $mediaAsset?->url,
-                'listing_image_media_id' => $mediaAsset?->id,
-                'status' => $request->validated('status', 'draft'),
-                'resource_payload' => $request->validated('resource_payload'),
-                'created_by' => auth()->id(),
-                'updated_by' => auth()->id(),
-            ]);
+                $resource = Resource::create([
+                    'resource_type' => $request->validated('resource_type'),
+                    'sub_industry' => $request->validated('sub_industry'),
+                    'sub_service' => $request->validated('sub_service'),
+                    'listing_title' => $request->validated('listing_title'),
+                    'listing_description' => $request->validated('listing_description'),
+                    'listing_image_url' => $mediaAsset?->url,
+                    'listing_image_media_id' => $mediaAsset?->id,
+                    'status' => $request->validated('status', 'draft'),
+                    'resource_payload' => $resourcePayload,
+                    'created_by' => auth()->id(),
+                    'updated_by' => auth()->id(),
+                ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Resource created successfully',
-                'data' => $this->transformFullResource($resource->load(['creator:id,name', 'editor:id,name', 'listingImage'])),
-            ], 201);
-        });
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Resource created successfully',
+                    'data' => $this->transformFullResource($resource->load(['creator:id,name', 'editor:id,name', 'listingImage'])),
+                ], 201);
+            });
+        } catch (\Throwable $exception) {
+            $this->cleanupStoredPaths($storedPaths);
+
+            throw $exception;
+        }
     }
 
     public function show(int $id): JsonResponse
@@ -137,7 +167,12 @@ class ResourceController extends Controller
         ]);
     }
 
-    public function update(StoreResourceRequest $request, int $id, MediaUploadService $mediaUploadService): JsonResponse
+    public function update(
+        StoreResourceRequest $request,
+        int $id,
+        MediaUploadService $mediaUploadService,
+        ResourcePayloadImageService $resourcePayloadImageService
+    ): JsonResponse
     {
         $resource = Resource::find($id);
 
@@ -148,43 +183,70 @@ class ResourceController extends Controller
             ], 404);
         }
 
-        return DB::transaction(function () use ($request, $resource, $mediaUploadService) {
-            $mediaAsset = $resource->listingImage;
+        $storedPaths = [];
 
-            if ($request->hasFile('listing_image')) {
-                $mediaAsset = $mediaUploadService->uploadFile(
-                    $request->file('listing_image'),
-                    auth()->id(),
-                    [
-                        'status' => 'active',
-                        'title' => $request->validated('listing_title'),
-                        'metadata' => [
-                            'module' => 'resources',
-                            'field' => 'listing_image',
+        try {
+            return DB::transaction(function () use (
+                $request,
+                $resource,
+                $mediaUploadService,
+                $resourcePayloadImageService,
+                &$storedPaths
+            ) {
+                $mediaAsset = $resource->listingImage;
+
+                if ($request->hasFile('listing_image')) {
+                    $mediaAsset = $mediaUploadService->uploadFile(
+                        $request->file('listing_image'),
+                        auth()->id(),
+                        [
+                            'status' => 'active',
+                            'title' => $request->validated('listing_title', $resource->listing_title),
+                            'metadata' => [
+                                'module' => 'resources',
+                                'field' => 'listing_image',
+                            ],
                         ],
-                    ]
-                );
-            }
+                        $storedPaths
+                    );
+                }
 
-            $resource->update([
-                'resource_type' => $request->validated('resource_type', $resource->resource_type),
-                'sub_industry' => $request->validated('sub_industry', $resource->sub_industry),
-                'sub_service' => $request->validated('sub_service', $resource->sub_service),
-                'listing_title' => $request->validated('listing_title', $resource->listing_title),
-                'listing_description' => $request->validated('listing_description', $resource->listing_description),
-                'listing_image_url' => $mediaAsset?->url,
-                'listing_image_media_id' => $mediaAsset?->id,
-                'status' => $request->validated('status', $resource->status),
-                'resource_payload' => $request->validated('resource_payload', $resource->resource_payload),
-                'updated_by' => auth()->id(),
-            ]);
+                $resourcePayload = $request->exists('resource_payload')
+                    ? $resourcePayloadImageService->replaceBase64ImagesWithUrls(
+                        $request->validated('resource_payload'),
+                        auth()->id(),
+                        [
+                            'status' => 'active',
+                            'title' => $request->validated('listing_title', $resource->listing_title),
+                        ],
+                        $storedPaths
+                    )
+                    : $resource->resource_payload;
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Resource updated successfully',
-                'data' => $this->transformFullResource($resource->fresh(['creator:id,name', 'editor:id,name', 'listingImage'])),
-            ]);
-        });
+                $resource->update([
+                    'resource_type' => $request->validated('resource_type', $resource->resource_type),
+                    'sub_industry' => $request->validated('sub_industry', $resource->sub_industry),
+                    'sub_service' => $request->validated('sub_service', $resource->sub_service),
+                    'listing_title' => $request->validated('listing_title', $resource->listing_title),
+                    'listing_description' => $request->validated('listing_description', $resource->listing_description),
+                    'listing_image_url' => $mediaAsset?->url,
+                    'listing_image_media_id' => $mediaAsset?->id,
+                    'status' => $request->validated('status', $resource->status),
+                    'resource_payload' => $resourcePayload,
+                    'updated_by' => auth()->id(),
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Resource updated successfully',
+                    'data' => $this->transformFullResource($resource->fresh(['creator:id,name', 'editor:id,name', 'listingImage'])),
+                ]);
+            });
+        } catch (\Throwable $exception) {
+            $this->cleanupStoredPaths($storedPaths);
+
+            throw $exception;
+        }
     }
 
     public function destroy(int $id): JsonResponse
@@ -296,5 +358,12 @@ class ResourceController extends Controller
                     ->values()
             )
             ->all();
+    }
+
+    protected function cleanupStoredPaths(array $storedPaths): void
+    {
+        foreach ($storedPaths as $storedPath) {
+            Storage::disk((string) config('media.disk', config('filesystems.default')))->delete($storedPath);
+        }
     }
 }

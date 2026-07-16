@@ -114,7 +114,7 @@ class MediaUploadService
 
         $asset = MediaAsset::create([
             'original_name' => $file->getClientOriginalName(),
-            'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
+            'title' => $options['title'] ?? pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
             'media_type' => $mediaType,
             'status' => $options['status'] ?? 'active',
             'disk' => $this->disk(),
@@ -140,6 +140,57 @@ class MediaUploadService
         ]);
 
         return $asset->fresh();
+    }
+
+    public function uploadBase64ImageData(
+        string $dataUri,
+        ?int $uploadedBy = null,
+        array $options = [],
+        array &$storedPaths = []
+    ): MediaAsset {
+        if (!preg_match('/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/s', $dataUri, $matches)) {
+            throw new MediaProcessingException('The provided base64 payload is not a valid image data URI.');
+        }
+
+        $mimeType = strtolower($matches[1]);
+        $binary = base64_decode($matches[2], true);
+
+        if ($binary === false) {
+            throw new MediaProcessingException('The provided base64 image data could not be decoded.');
+        }
+
+        $extension = $this->mimeToExtension($mimeType);
+
+        if (!$extension) {
+            throw new MediaProcessingException('This base64 image format is not supported for upload.');
+        }
+
+        $sourceDirectory = storage_path('app/tmp');
+
+        if (!is_dir($sourceDirectory)) {
+            mkdir($sourceDirectory, 0777, true);
+        }
+
+        $sourceFileName = 'resource-payload-' . Str::lower(Str::uuid()->toString()) . '.' . $extension;
+        $sourcePath = $sourceDirectory . '/' . $sourceFileName;
+
+        if (file_put_contents($sourcePath, $binary) === false) {
+            throw new MediaProcessingException('The provided base64 image could not be prepared for upload.');
+        }
+
+        try {
+            $uploadedFile = new UploadedFile(
+                $sourcePath,
+                $options['original_name'] ?? $sourceFileName,
+                $mimeType,
+                null,
+                true
+            );
+
+            return $this->uploadFile($uploadedFile, $uploadedBy, $options, $storedPaths);
+        } finally {
+            @unlink($sourcePath);
+        }
     }
 
     protected function buildDirectory(string $mediaType): string
@@ -176,5 +227,17 @@ class MediaUploadService
         }
 
         return 'file';
+    }
+
+    protected function mimeToExtension(string $mimeType): ?string
+    {
+        return match ($mimeType) {
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+            'image/bmp' => 'bmp',
+            default => null,
+        };
     }
 }

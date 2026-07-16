@@ -2,9 +2,12 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\MediaAsset;
+use App\Models\Role;
 use App\Models\Resource;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ResourceControllerTest extends TestCase
@@ -96,5 +99,153 @@ class ResourceControllerTest extends TestCase
             ->assertJsonPath('data.id', $resource->id)
             ->assertJsonPath('data.listing_title', 'React Hooks Guide')
             ->assertJsonPath('data.resource_payload.resourceType', 'articles');
+    }
+
+    public function test_authenticated_user_can_create_resource_and_convert_payload_base64_images_to_urls(): void
+    {
+        Storage::fake('s3');
+
+        $user = $this->createSuperAdminUser();
+        $base64Image = $this->samplePngDataUri();
+
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/resources', [
+            'resource_type' => 'our-work',
+            'sub_industry' => 'sub-cat-a',
+            'sub_service' => 'sub-menu-a',
+            'listing_title' => 'Sarvasa Capital',
+            'listing_description' => 'hola test',
+            'status' => 'published',
+            'resource_payload' => [
+                'resourceType' => 'our-work',
+                'sections' => [
+                    [
+                        'id' => 'portfolio-banner-section',
+                        'type' => 'portfolioBanner',
+                        'content' => [
+                            'image' => $base64Image,
+                        ],
+                    ],
+                    [
+                        'id' => 'portfolio-dual-section',
+                        'type' => 'portfolioDual',
+                        'content' => [
+                            'leftImage' => $base64Image,
+                            'caption' => 'caption',
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('success', true);
+
+        $resource = Resource::firstOrFail();
+        $payload = $resource->resource_payload;
+        $firstImageUrl = $payload['sections'][0]['content']['image'];
+        $secondImageUrl = $payload['sections'][1]['content']['leftImage'];
+
+        $this->assertNotSame($base64Image, $firstImageUrl);
+        $this->assertNotSame($base64Image, $secondImageUrl);
+        $this->assertStringContainsString('.webp', $firstImageUrl);
+        $this->assertStringContainsString('.webp', $secondImageUrl);
+        $this->assertSame($firstImageUrl, $response->json('data.resource_payload.sections.0.content.image'));
+        $this->assertSame($secondImageUrl, $response->json('data.resource_payload.sections.1.content.leftImage'));
+        $this->assertDatabaseCount('media_assets', 2);
+
+        MediaAsset::all()->each(function (MediaAsset $asset): void {
+            $this->assertSame('image', $asset->media_type);
+            $this->assertSame('webp', $asset->converted_extension);
+            Storage::disk('s3')->assertExists($asset->path);
+        });
+    }
+
+    public function test_authenticated_user_can_update_resource_and_replace_payload_base64_images_with_urls(): void
+    {
+        Storage::fake('s3');
+
+        $user = $this->createSuperAdminUser();
+
+        $resource = Resource::create([
+            'resource_type' => 'our-work',
+            'listing_title' => 'Initial Resource',
+            'status' => 'draft',
+            'resource_payload' => [
+                'resourceType' => 'our-work',
+                'sections' => [
+                    [
+                        'id' => 'portfolio-banner-section',
+                        'type' => 'portfolioBanner',
+                        'content' => [
+                            'image' => 'https://cdn.example.com/existing.webp',
+                        ],
+                    ],
+                ],
+            ],
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        $base64Image = $this->samplePngDataUri();
+
+        $response = $this->actingAs($user, 'sanctum')->putJson('/api/resources/' . $resource->id, [
+            'resource_payload' => [
+                'resourceType' => 'our-work',
+                'sections' => [
+                    [
+                        'id' => 'portfolio-banner-section',
+                        'type' => 'portfolioBanner',
+                        'content' => [
+                            'image' => $base64Image,
+                        ],
+                    ],
+                    [
+                        'id' => 'edge-section',
+                        'type' => 'edge',
+                        'content' => [
+                            'image' => $base64Image,
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $resource->refresh();
+
+        $updatedImageUrl = $resource->resource_payload['sections'][0]['content']['image'];
+        $edgeImageUrl = $resource->resource_payload['sections'][1]['content']['image'];
+
+        $this->assertStringContainsString('.webp', $updatedImageUrl);
+        $this->assertStringContainsString('.webp', $edgeImageUrl);
+        $this->assertSame($updatedImageUrl, $response->json('data.resource_payload.sections.0.content.image'));
+        $this->assertSame($edgeImageUrl, $response->json('data.resource_payload.sections.1.content.image'));
+        $this->assertDatabaseCount('media_assets', 2);
+    }
+
+    protected function createSuperAdminUser(): User
+    {
+        $role = Role::create(['name' => 'Super Admin']);
+
+        $user = User::create([
+            'name' => 'Resource Admin',
+            'email' => 'resource-admin@example.com',
+            'password' => 'password',
+        ]);
+
+        $user->roles()->attach($role->id);
+
+        return $user;
+    }
+
+    protected function samplePngDataUri(): string
+    {
+        return 'data:image/png;base64,'
+            . 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4'
+            . '//8/AwAI/AL+KD0S3wAAAABJRU5ErkJggg==';
     }
 }
