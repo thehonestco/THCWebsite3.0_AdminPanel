@@ -167,6 +167,7 @@ $collection = [
         ['key' => 'resource_id', 'value' => '1'],
         ['key' => 'editor_id', 'value' => '1'],
         ['key' => 'job_id', 'value' => '1'],
+        ['key' => 'resource_payload_base64_image', 'value' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4//8/AwAI/AL+KD0S3wAAAABJRU5ErkJggg=='],
     ],
     'item' => [],
     'auth' => [
@@ -637,8 +638,11 @@ $collection['item'][] = [
 $collection['item'][] = [
     'name' => 'Resources',
     'item' => [
-        requestItem('Resources Metadata', 'GET', 'resources/metadata'),
+        requestItem('Resources Metadata', 'GET', 'resources/metadata', [
+            'auth' => ['type' => 'noauth'],
+        ]),
         requestItem('List Resources', 'GET', 'resources', [
+            'auth' => ['type' => 'noauth'],
             'query' => [
                 'search' => '',
                 'category' => 'our-work',
@@ -650,22 +654,62 @@ $collection['item'][] = [
             ],
         ]),
         requestItem('Create Resource', 'POST', 'resources', [
+            'description' => 'Step-1 draft create example without resource_payload. Use this when frontend only saves page information first.',
             'body' => formDataBody([
                 ['key' => 'resource_type', 'value' => 'our-work'],
-                ['key' => 'sub_industry', 'value' => 'sub-cat-a'],
-                ['key' => 'sub_service', 'value' => 'sub-menu-a'],
+                ['key' => 'sub_industry[]', 'value' => 'sub-cat-a'],
+                ['key' => 'sub_industry[]', 'value' => 'sub-cat-b'],
+                ['key' => 'sub_service[]', 'value' => 'sub-menu-a'],
+                ['key' => 'sub_service[]', 'value' => 'sub-menu-b'],
                 ['key' => 'listing_title', 'value' => 'P2P Money Remittance Mobile Application'],
                 ['key' => 'listing_description', 'value' => 'To Peer Payments Through Money Remittance Platforms.'],
                 ['key' => 'status', 'value' => 'draft'],
                 ['key' => 'listing_image', 'type' => 'file', 'src' => ''],
             ]),
         ]),
-        requestItem('Show Resource', 'GET', 'resources/{{resource_id}}'),
+        requestItem('Create Resource With Payload Base64 Image', 'POST', 'resources', [
+            'description' => 'Example for payload images sent from frontend as base64. Backend will convert every data:image/...;base64,... string inside resource_payload to a stored WebP URL.',
+            'body' => formDataBody([
+                ['key' => 'resource_type', 'value' => 'our-work'],
+                ['key' => 'sub_industry[]', 'value' => 'sub-cat-a'],
+                ['key' => 'sub_industry[]', 'value' => 'sub-cat-b'],
+                ['key' => 'sub_service[]', 'value' => 'sub-menu-a'],
+                ['key' => 'sub_service[]', 'value' => 'sub-menu-b'],
+                ['key' => 'listing_title', 'value' => 'Sarvasa Capital'],
+                ['key' => 'listing_description', 'value' => 'hola test'],
+                ['key' => 'status', 'value' => 'published'],
+                ['key' => 'resource_payload', 'value' => json_encode([
+                    'resourceType' => 'our-work',
+                    'sections' => [
+                        [
+                            'id' => 'portfolio-banner-section',
+                            'type' => 'portfolioBanner',
+                            'content' => [
+                                'image' => '{{resource_payload_base64_image}}',
+                            ],
+                        ],
+                        [
+                            'id' => 'portfolio-dual-section',
+                            'type' => 'portfolioDual',
+                            'content' => [
+                                'leftImage' => '{{resource_payload_base64_image}}',
+                                'rightImage' => 'https://example.com/already-uploaded-image.webp',
+                                'caption' => 'Payload should keep existing URLs untouched.',
+                            ],
+                        ],
+                    ],
+                ], JSON_UNESCAPED_SLASHES)],
+            ]),
+        ]),
+        requestItem('Show Resource', 'GET', 'resources/{{resource_id}}', [
+            'auth' => ['type' => 'noauth'],
+        ]),
         requestItem('Update Resource', 'POST', 'resources/{{resource_id}}', [
             'body' => formDataBody([
                 ['key' => 'resource_type', 'value' => 'our-work'],
-                ['key' => 'sub_industry', 'value' => 'sub-cat-b'],
-                ['key' => 'sub_service', 'value' => 'sub-menu-b'],
+                ['key' => 'sub_industry[]', 'value' => 'sub-cat-b'],
+                ['key' => 'sub_service[]', 'value' => 'sub-menu-a'],
+                ['key' => 'sub_service[]', 'value' => 'sub-menu-b'],
                 ['key' => 'listing_title', 'value' => 'Updated P2P Money Remittance Mobile Application'],
                 ['key' => 'listing_description', 'value' => 'Updated listing description for frontend use.'],
                 ['key' => 'status', 'value' => 'published'],
@@ -691,6 +735,40 @@ $collection['item'][] = [
                                 'description1' => 'We work with clients across a range of industries.',
                                 'description2' => 'Description 2',
                                 'image' => '',
+                            ],
+                        ],
+                    ],
+                ], JSON_UNESCAPED_SLASHES)],
+            ]),
+        ]),
+        requestItem('Update Resource With Payload Base64 Image', 'POST', 'resources/{{resource_id}}', [
+            'description' => 'Use this to test replacing payload base64 images on update. Base64 images will be stored on bucket and the saved payload/response will contain final URLs.',
+            'body' => formDataBody([
+                ['key' => 'resource_type', 'value' => 'our-work'],
+                ['key' => 'sub_industry[]', 'value' => 'sub-cat-b'],
+                ['key' => 'sub_service[]', 'value' => 'sub-menu-a'],
+                ['key' => 'sub_service[]', 'value' => 'sub-menu-b'],
+                ['key' => 'listing_title', 'value' => 'Updated Sarvasa Capital'],
+                ['key' => 'listing_description', 'value' => 'Updated listing description with payload base64 image conversion.'],
+                ['key' => 'status', 'value' => 'published'],
+                ['key' => 'resource_payload', 'value' => json_encode([
+                    'resourceType' => 'our-work',
+                    'sections' => [
+                        [
+                            'id' => 'portfolio-banner-section',
+                            'type' => 'portfolioBanner',
+                            'content' => [
+                                'image' => '{{resource_payload_base64_image}}',
+                            ],
+                        ],
+                        [
+                            'id' => 'edge-section',
+                            'type' => 'edge',
+                            'content' => [
+                                'title' => 'The Honest Edge',
+                                'description1' => 'This base64 image should be converted and replaced with URL.',
+                                'description2' => 'Description 2',
+                                'image' => '{{resource_payload_base64_image}}',
                             ],
                         ],
                     ],

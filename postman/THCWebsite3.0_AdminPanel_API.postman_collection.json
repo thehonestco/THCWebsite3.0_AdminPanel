@@ -85,6 +85,10 @@
         {
             "key": "job_id",
             "value": "1"
+        },
+        {
+            "key": "resource_payload_base64_image",
+            "value": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4//8/AwAI/AL+KD0S3wAAAABJRU5ErkJggg=="
         }
     ],
     "item": [
@@ -2418,14 +2422,7 @@
                         },
                         "description": "",
                         "auth": {
-                            "type": "bearer",
-                            "bearer": [
-                                {
-                                    "key": "token",
-                                    "value": "{{bearer_token}}",
-                                    "type": "string"
-                                }
-                            ]
+                            "type": "noauth"
                         }
                     },
                     "response": []
@@ -2476,14 +2473,7 @@
                         },
                         "description": "",
                         "auth": {
-                            "type": "bearer",
-                            "bearer": [
-                                {
-                                    "key": "token",
-                                    "value": "{{bearer_token}}",
-                                    "type": "string"
-                                }
-                            ]
+                            "type": "noauth"
                         }
                     },
                     "response": []
@@ -2503,7 +2493,7 @@
                             ],
                             "query": []
                         },
-                        "description": "",
+                        "description": "Step-1 draft create example without resource_payload. Use this when frontend only saves page information first.",
                         "auth": {
                             "type": "bearer",
                             "bearer": [
@@ -2523,14 +2513,24 @@
                                     "value": "our-work"
                                 },
                                 {
-                                    "key": "sub_industry",
+                                    "key": "sub_industry[]",
                                     "type": "text",
                                     "value": "sub-cat-a"
                                 },
                                 {
-                                    "key": "sub_service",
+                                    "key": "sub_industry[]",
+                                    "type": "text",
+                                    "value": "sub-cat-b"
+                                },
+                                {
+                                    "key": "sub_service[]",
                                     "type": "text",
                                     "value": "sub-menu-a"
+                                },
+                                {
+                                    "key": "sub_service[]",
+                                    "type": "text",
+                                    "value": "sub-menu-b"
                                 },
                                 {
                                     "key": "listing_title",
@@ -2558,6 +2558,85 @@
                     "response": []
                 },
                 {
+                    "name": "Create Resource With Payload Base64 Image",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/resources",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "resources"
+                            ],
+                            "query": []
+                        },
+                        "description": "Example for payload images sent from frontend as base64. Backend will convert every data:image/...;base64,... string inside resource_payload to a stored WebP URL.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{bearer_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "resource_type",
+                                    "type": "text",
+                                    "value": "our-work"
+                                },
+                                {
+                                    "key": "sub_industry[]",
+                                    "type": "text",
+                                    "value": "sub-cat-a"
+                                },
+                                {
+                                    "key": "sub_industry[]",
+                                    "type": "text",
+                                    "value": "sub-cat-b"
+                                },
+                                {
+                                    "key": "sub_service[]",
+                                    "type": "text",
+                                    "value": "sub-menu-a"
+                                },
+                                {
+                                    "key": "sub_service[]",
+                                    "type": "text",
+                                    "value": "sub-menu-b"
+                                },
+                                {
+                                    "key": "listing_title",
+                                    "type": "text",
+                                    "value": "Sarvasa Capital"
+                                },
+                                {
+                                    "key": "listing_description",
+                                    "type": "text",
+                                    "value": "hola test"
+                                },
+                                {
+                                    "key": "status",
+                                    "type": "text",
+                                    "value": "published"
+                                },
+                                {
+                                    "key": "resource_payload",
+                                    "type": "text",
+                                    "value": "{\"resourceType\":\"our-work\",\"sections\":[{\"id\":\"portfolio-banner-section\",\"type\":\"portfolioBanner\",\"content\":{\"image\":\"{{resource_payload_base64_image}}\"}},{\"id\":\"portfolio-dual-section\",\"type\":\"portfolioDual\",\"content\":{\"leftImage\":\"{{resource_payload_base64_image}}\",\"rightImage\":\"https://example.com/already-uploaded-image.webp\",\"caption\":\"Payload should keep existing URLs untouched.\"}}]}"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
                     "name": "Show Resource",
                     "request": {
                         "method": "GET",
@@ -2575,14 +2654,7 @@
                         },
                         "description": "",
                         "auth": {
-                            "type": "bearer",
-                            "bearer": [
-                                {
-                                    "key": "token",
-                                    "value": "{{bearer_token}}",
-                                    "type": "string"
-                                }
-                            ]
+                            "type": "noauth"
                         }
                     },
                     "response": []
@@ -2623,12 +2695,17 @@
                                     "value": "our-work"
                                 },
                                 {
-                                    "key": "sub_industry",
+                                    "key": "sub_industry[]",
                                     "type": "text",
                                     "value": "sub-cat-b"
                                 },
                                 {
-                                    "key": "sub_service",
+                                    "key": "sub_service[]",
+                                    "type": "text",
+                                    "value": "sub-menu-a"
+                                },
+                                {
+                                    "key": "sub_service[]",
                                     "type": "text",
                                     "value": "sub-menu-b"
                                 },
@@ -2656,6 +2733,81 @@
                                     "key": "resource_payload",
                                     "type": "text",
                                     "value": "{\"resourceType\":\"our-work\",\"sections\":[{\"id\":\"breadcrumb-section\",\"type\":\"breadcrumb\",\"content\":{\"items\":[\"Portfolio Projects\",\"Updated P2P Money Remittance Mobile Application\"]}},{\"id\":\"edge-section\",\"type\":\"edge\",\"content\":{\"title\":\"The Honest Edge\",\"description1\":\"We work with clients across a range of industries.\",\"description2\":\"Description 2\",\"image\":\"\"}}]}"
+                                }
+                            ]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Resource With Payload Base64 Image",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/resources/{{resource_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "resources",
+                                "{{resource_id}}"
+                            ],
+                            "query": []
+                        },
+                        "description": "Use this to test replacing payload base64 images on update. Base64 images will be stored on bucket and the saved payload/response will contain final URLs.",
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{bearer_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "resource_type",
+                                    "type": "text",
+                                    "value": "our-work"
+                                },
+                                {
+                                    "key": "sub_industry[]",
+                                    "type": "text",
+                                    "value": "sub-cat-b"
+                                },
+                                {
+                                    "key": "sub_service[]",
+                                    "type": "text",
+                                    "value": "sub-menu-a"
+                                },
+                                {
+                                    "key": "sub_service[]",
+                                    "type": "text",
+                                    "value": "sub-menu-b"
+                                },
+                                {
+                                    "key": "listing_title",
+                                    "type": "text",
+                                    "value": "Updated Sarvasa Capital"
+                                },
+                                {
+                                    "key": "listing_description",
+                                    "type": "text",
+                                    "value": "Updated listing description with payload base64 image conversion."
+                                },
+                                {
+                                    "key": "status",
+                                    "type": "text",
+                                    "value": "published"
+                                },
+                                {
+                                    "key": "resource_payload",
+                                    "type": "text",
+                                    "value": "{\"resourceType\":\"our-work\",\"sections\":[{\"id\":\"portfolio-banner-section\",\"type\":\"portfolioBanner\",\"content\":{\"image\":\"{{resource_payload_base64_image}}\"}},{\"id\":\"edge-section\",\"type\":\"edge\",\"content\":{\"title\":\"The Honest Edge\",\"description1\":\"This base64 image should be converted and replaced with URL.\",\"description2\":\"Description 2\",\"image\":\"{{resource_payload_base64_image}}\"}}]}"
                                 }
                             ]
                         }

@@ -41,8 +41,8 @@ class ResourceControllerTest extends TestCase
 
         $resource = Resource::create([
             'resource_type' => 'our-work',
-            'sub_industry' => 'sub-cat-a',
-            'sub_service' => 'sub-menu-a',
+            'sub_industry' => ['sub-cat-a', 'sub-cat-b'],
+            'sub_service' => ['sub-menu-a', 'sub-menu-b'],
             'listing_title' => 'P2P Remittance App',
             'listing_description' => 'Frontend listing description',
             'listing_image_url' => 'https://cdn.example.com/resources/p2p-banner.webp',
@@ -71,6 +71,8 @@ class ResourceControllerTest extends TestCase
 
         $resource = Resource::create([
             'resource_type' => 'articles',
+            'sub_industry' => ['sub-cat-a'],
+            'sub_service' => ['sub-menu-a', 'sub-menu-b'],
             'listing_title' => 'React Hooks Guide',
             'listing_description' => 'Detailed React article',
             'listing_image_url' => 'https://cdn.example.com/resources/react-hooks.webp',
@@ -98,6 +100,10 @@ class ResourceControllerTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.id', $resource->id)
             ->assertJsonPath('data.listing_title', 'React Hooks Guide')
+            ->assertJsonPath('data.sub_industry.0', 'sub-cat-a')
+            ->assertJsonPath('data.sub_industry_labels.0', 'SubCat A')
+            ->assertJsonPath('data.sub_service.1', 'sub-menu-b')
+            ->assertJsonPath('data.sub_service_labels.1', 'SubMenu B')
             ->assertJsonPath('data.resource_payload.resourceType', 'articles');
     }
 
@@ -110,8 +116,8 @@ class ResourceControllerTest extends TestCase
 
         $response = $this->actingAs($user, 'sanctum')->postJson('/api/resources', [
             'resource_type' => 'our-work',
-            'sub_industry' => 'sub-cat-a',
-            'sub_service' => 'sub-menu-a',
+            'sub_industry' => ['sub-cat-a', 'sub-cat-b'],
+            'sub_service' => ['sub-menu-a', 'sub-menu-b'],
             'listing_title' => 'Sarvasa Capital',
             'listing_description' => 'hola test',
             'status' => 'published',
@@ -150,6 +156,12 @@ class ResourceControllerTest extends TestCase
         $this->assertNotSame($base64Image, $secondImageUrl);
         $this->assertStringContainsString('.webp', $firstImageUrl);
         $this->assertStringContainsString('.webp', $secondImageUrl);
+        $this->assertSame(['sub-cat-a', 'sub-cat-b'], $resource->sub_industry);
+        $this->assertSame(['sub-menu-a', 'sub-menu-b'], $resource->sub_service);
+        $response->assertJsonPath('data.sub_industry.1', 'sub-cat-b');
+        $response->assertJsonPath('data.sub_industry_labels.1', 'SubCat B');
+        $response->assertJsonPath('data.sub_service.1', 'sub-menu-b');
+        $response->assertJsonPath('data.sub_service_labels.1', 'SubMenu B');
         $this->assertSame($firstImageUrl, $response->json('data.resource_payload.sections.0.content.image'));
         $this->assertSame($secondImageUrl, $response->json('data.resource_payload.sections.1.content.leftImage'));
         $this->assertDatabaseCount('media_assets', 2);
@@ -190,6 +202,8 @@ class ResourceControllerTest extends TestCase
         $base64Image = $this->samplePngDataUri();
 
         $response = $this->actingAs($user, 'sanctum')->putJson('/api/resources/' . $resource->id, [
+            'sub_industry' => ['sub-cat-b'],
+            'sub_service' => ['sub-menu-a', 'sub-menu-b'],
             'resource_payload' => [
                 'resourceType' => 'our-work',
                 'sections' => [
@@ -222,6 +236,12 @@ class ResourceControllerTest extends TestCase
 
         $this->assertStringContainsString('.webp', $updatedImageUrl);
         $this->assertStringContainsString('.webp', $edgeImageUrl);
+        $this->assertSame(['sub-cat-b'], $resource->sub_industry);
+        $this->assertSame(['sub-menu-a', 'sub-menu-b'], $resource->sub_service);
+        $response->assertJsonPath('data.sub_industry.0', 'sub-cat-b');
+        $response->assertJsonPath('data.sub_industry_labels.0', 'SubCat B');
+        $response->assertJsonPath('data.sub_service.1', 'sub-menu-b');
+        $response->assertJsonPath('data.sub_service_labels.1', 'SubMenu B');
         $this->assertSame($updatedImageUrl, $response->json('data.resource_payload.sections.0.content.image'));
         $this->assertSame($edgeImageUrl, $response->json('data.resource_payload.sections.1.content.image'));
         $this->assertDatabaseCount('media_assets', 2);

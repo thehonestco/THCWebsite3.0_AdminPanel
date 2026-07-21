@@ -290,14 +290,16 @@ class ResourceController extends Controller
             'id' => $resource->id,
             'resource_type' => $resource->resource_type,
             'resource_type_label' => config('resources.types.' . $resource->resource_type, $resource->resource_type),
-            'sub_industry' => $resource->sub_industry,
-            'sub_industry_label' => $resource->sub_industry
-                ? config('resources.sub_industries.' . $resource->sub_industry, $resource->sub_industry)
-                : null,
-            'sub_service' => $resource->sub_service,
-            'sub_service_label' => $resource->sub_service
-                ? config('resources.sub_services.' . $resource->sub_service, $resource->sub_service)
-                : null,
+            'sub_industry' => $resource->sub_industry ?? [],
+            'sub_industry_labels' => collect($resource->sub_industry ?? [])
+                ->map(fn (string $value) => config('resources.sub_industries.' . $value, $value))
+                ->values()
+                ->all(),
+            'sub_service' => $resource->sub_service ?? [],
+            'sub_service_labels' => collect($resource->sub_service ?? [])
+                ->map(fn (string $value) => config('resources.sub_services.' . $value, $value))
+                ->values()
+                ->all(),
             'listing_title' => $resource->listing_title,
             'listing_description' => $resource->listing_description,
             'listing_image_url' => $resource->listing_image_url,

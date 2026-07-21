@@ -25,6 +25,8 @@ class Resource extends Model
     ];
 
     protected $casts = [
+        'sub_industry' => 'array',
+        'sub_service' => 'array',
         'resource_payload' => 'array',
     ];
 
