@@ -64,6 +64,7 @@ class MediaCenterController extends Controller
                     ['label' => 'All Types', 'value' => null],
                     ['label' => 'Image', 'value' => 'image'],
                     ['label' => 'Video', 'value' => 'video'],
+                    ['label' => 'Audio', 'value' => 'audio'],
                     ['label' => 'PDF', 'value' => 'pdf'],
                     ['label' => 'File', 'value' => 'file'],
                 ],
@@ -80,8 +81,8 @@ class MediaCenterController extends Controller
     public function store(StoreMediaAssetRequest $request, MediaUploadService $mediaUploadService): JsonResponse
     {
         try {
-            $mediaAssets = $mediaUploadService->uploadMany(
-                $request->file('files', []),
+            $mediaAssets = $mediaUploadService->createManyFromUrls(
+                $request->validated('urls', []),
                 auth()->id(),
                 [
                     'status' => $request->validated('status', 'active'),
@@ -155,7 +156,9 @@ class MediaCenterController extends Controller
             ], 404);
         }
 
-        Storage::disk($mediaAsset->disk)->delete($mediaAsset->path);
+        if ($mediaAsset->disk !== 'external' && $mediaAsset->path) {
+            Storage::disk($mediaAsset->disk)->delete($mediaAsset->path);
+        }
         $mediaAsset->delete();
 
         return response()->json([
@@ -173,6 +176,7 @@ class MediaCenterController extends Controller
             'title' => $mediaAsset->title,
             'media_type' => $mediaAsset->media_type,
             'type_label' => match ($mediaAsset->media_type) {
+                'audio' => 'Audio',
                 'pdf' => 'PDF',
                 'file' => 'File',
                 default => ucfirst($mediaAsset->media_type),

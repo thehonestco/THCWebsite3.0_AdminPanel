@@ -6,24 +6,22 @@ use App\Models\MediaAsset;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class MediaCenterControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_authenticated_user_can_upload_multiple_images_and_receive_webp_assets(): void
+    public function test_authenticated_user_can_create_multiple_media_assets_from_urls(): void
     {
-        Storage::fake('s3');
-
         $user = $this->createSuperAdminUser();
 
-        $response = $this->actingAs($user, 'sanctum')->post('/api/media-center/upload', [
-            'files' => [
-                UploadedFile::fake()->image('banner-one.jpg', 1800, 1200),
-                UploadedFile::fake()->image('banner-two.png', 1400, 900),
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/media-center/upload', [
+            'status' => 'active',
+            'urls' => [
+                'https://cdn.example.com/uploads/banner.webp',
+                'https://cdn.example.com/uploads/intro.mp4',
+                'https://cdn.example.com/uploads/theme.mp3',
             ],
         ]);
 
@@ -34,17 +32,24 @@ class MediaCenterControllerTest extends TestCase
                 'message' => 'Media uploaded successfully.',
             ]);
 
-        $this->assertDatabaseCount('media_assets', 2);
+        $this->assertDatabaseCount('media_assets', 3);
 
-        $assets = MediaAsset::all();
+        $assets = MediaAsset::orderBy('id')->get();
 
-        foreach ($assets as $asset) {
-            $this->assertSame('image', $asset->media_type);
-            $this->assertSame('webp', $asset->converted_extension);
-            $this->assertSame('active', $asset->status);
-            $this->assertStringStartsWith('MC-', $asset->media_code);
-            Storage::disk('s3')->assertExists($asset->path);
-        }
+        $this->assertSame('image', $assets[0]->media_type);
+        $this->assertSame('banner', $assets[0]->title);
+        $this->assertSame('webp', $assets[0]->source_extension);
+        $this->assertSame('https://cdn.example.com/uploads/banner.webp', $assets[0]->url);
+        $this->assertSame('external', $assets[0]->disk);
+        $this->assertStringStartsWith('external/', $assets[0]->path);
+
+        $this->assertSame('video', $assets[1]->media_type);
+        $this->assertSame('intro', $assets[1]->title);
+        $this->assertSame('mp4', $assets[1]->source_extension);
+
+        $this->assertSame('audio', $assets[2]->media_type);
+        $this->assertSame('theme', $assets[2]->title);
+        $this->assertSame('mp3', $assets[2]->source_extension);
     }
 
     public function test_media_center_listing_supports_type_filter(): void
@@ -76,16 +81,35 @@ class MediaCenterControllerTest extends TestCase
             'title' => 'intro',
             'media_type' => 'video',
             'status' => 'inactive',
-            'disk' => 's3',
-            'directory' => 'media-center/videos/2026/07',
-            'file_name' => 'intro.webm',
-            'path' => 'media-center/videos/2026/07/intro.webm',
-            'url' => 'https://example.com/intro.webm',
+            'disk' => 'external',
+            'directory' => 'external',
+            'file_name' => 'intro.mp4',
+            'path' => 'external/intro.mp4',
+            'url' => 'https://example.com/intro.mp4',
             'source_extension' => 'mp4',
             'source_mime_type' => 'video/mp4',
-            'converted_extension' => 'webm',
-            'converted_mime_type' => 'video/webm',
+            'converted_extension' => 'mp4',
+            'converted_mime_type' => 'video/mp4',
             'size_bytes' => 4096,
+            'created_by' => $user->id,
+        ]);
+
+        MediaAsset::create([
+            'original_name' => 'theme.mp3',
+            'media_code' => 'MC-003',
+            'title' => 'theme',
+            'media_type' => 'audio',
+            'status' => 'active',
+            'disk' => 'external',
+            'directory' => 'external',
+            'file_name' => 'theme.mp3',
+            'path' => 'external/theme.mp3',
+            'url' => 'https://example.com/theme.mp3',
+            'source_extension' => 'mp3',
+            'source_mime_type' => 'audio/mpeg',
+            'converted_extension' => 'mp3',
+            'converted_mime_type' => 'audio/mpeg',
+            'size_bytes' => 2048,
             'created_by' => $user->id,
         ]);
 
@@ -97,16 +121,14 @@ class MediaCenterControllerTest extends TestCase
             ->assertJsonCount(1, 'data.data');
     }
 
-    public function test_authenticated_user_can_upload_non_media_file_without_conversion(): void
+    public function test_authenticated_user_can_create_non_media_file_from_url(): void
     {
-        Storage::fake('s3');
-
         $user = $this->createSuperAdminUser();
 
-        $response = $this->actingAs($user, 'sanctum')->post('/api/media-center/upload', [
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/media-center/upload', [
             'status' => 'active',
-            'files' => [
-                UploadedFile::fake()->createWithContent('guide.txt', 'hello world'),
+            'urls' => [
+                'https://cdn.example.com/uploads/guide.txt',
             ],
         ]);
 

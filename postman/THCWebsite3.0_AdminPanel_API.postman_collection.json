@@ -3288,7 +3288,7 @@
                             ],
                             "query": []
                         },
-                        "description": "",
+                        "description": "Frontend uploads media first, then backend only stores the provided URLs.",
                         "auth": {
                             "type": "bearer",
                             "bearer": [
@@ -3308,9 +3308,19 @@
                                     "value": "active"
                                 },
                                 {
-                                    "key": "files[0]",
-                                    "type": "file",
-                                    "src": ""
+                                    "key": "urls[]",
+                                    "type": "text",
+                                    "value": "https://cdn.example.com/uploads/banner.webp"
+                                },
+                                {
+                                    "key": "urls[]",
+                                    "type": "text",
+                                    "value": "https://cdn.example.com/uploads/intro.mp4"
+                                },
+                                {
+                                    "key": "urls[]",
+                                    "type": "text",
+                                    "value": "https://cdn.example.com/uploads/theme.mp3"
                                 }
                             ]
                         }
@@ -3333,7 +3343,7 @@
                             ],
                             "query": []
                         },
-                        "description": "",
+                        "description": "Alias endpoint for the same URL-based media create flow.",
                         "auth": {
                             "type": "bearer",
                             "bearer": [
@@ -3353,9 +3363,14 @@
                                     "value": "inactive"
                                 },
                                 {
-                                    "key": "files[0]",
-                                    "type": "file",
-                                    "src": ""
+                                    "key": "urls[]",
+                                    "type": "text",
+                                    "value": "https://cdn.example.com/uploads/banner.webp"
+                                },
+                                {
+                                    "key": "urls[]",
+                                    "type": "text",
+                                    "value": "https://cdn.example.com/uploads/intro.mp4"
                                 }
                             ]
                         }

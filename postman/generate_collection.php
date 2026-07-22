@@ -859,15 +859,20 @@ $collection['item'][] = [
             ],
         ]),
         requestItem('Create Media Asset', 'POST', 'media-center', [
+            'description' => 'Frontend uploads media first, then backend only stores the provided URLs.',
             'body' => formDataBody([
                 ['key' => 'status', 'value' => 'active'],
-                ['key' => 'files[0]', 'type' => 'file', 'src' => ''],
+                ['key' => 'urls[]', 'value' => 'https://cdn.example.com/uploads/banner.webp'],
+                ['key' => 'urls[]', 'value' => 'https://cdn.example.com/uploads/intro.mp4'],
+                ['key' => 'urls[]', 'value' => 'https://cdn.example.com/uploads/theme.mp3'],
             ]),
         ]),
         requestItem('Upload Media Asset Alias', 'POST', 'media-center/upload', [
+            'description' => 'Alias endpoint for the same URL-based media create flow.',
             'body' => formDataBody([
                 ['key' => 'status', 'value' => 'inactive'],
-                ['key' => 'files[0]', 'type' => 'file', 'src' => ''],
+                ['key' => 'urls[]', 'value' => 'https://cdn.example.com/uploads/banner.webp'],
+                ['key' => 'urls[]', 'value' => 'https://cdn.example.com/uploads/intro.mp4'],
             ]),
         ]),
         requestItem('Show Media Asset', 'GET', 'media-center/{{media_id}}'),

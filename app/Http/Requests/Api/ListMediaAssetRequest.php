@@ -16,7 +16,7 @@ class ListMediaAssetRequest extends FormRequest
         return [
             'search' => 'nullable|string|max:255',
             'date' => 'nullable|date',
-            'type' => 'nullable|in:image,video,pdf,file',
+            'type' => 'nullable|in:image,video,audio,pdf,file',
             'status' => 'nullable|in:active,inactive',
             'editor_id' => 'nullable|integer|exists:users,id',
             'date_from' => 'nullable|date',

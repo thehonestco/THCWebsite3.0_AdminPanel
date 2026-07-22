@@ -46,6 +46,18 @@ class MediaUploadService
         });
     }
 
+    public function createManyFromUrls(array $urls, ?int $uploadedBy = null, array $options = []): Collection
+    {
+        return DB::transaction(function () use ($urls, $uploadedBy, $options) {
+            return collect($urls)
+                ->map(fn (string $url) => $this->createFromUrl($url, $uploadedBy, [
+                    'status' => $options['status'] ?? 'active',
+                    'metadata' => $options['metadata'] ?? [],
+                ]))
+                ->values();
+        });
+    }
+
     public function uploadFile(
         UploadedFile $file,
         ?int $uploadedBy = null,
@@ -210,6 +222,46 @@ class MediaUploadService
         return (string) config('media.disk', config('filesystems.default'));
     }
 
+    public function createFromUrl(string $url, ?int $uploadedBy = null, array $options = []): MediaAsset
+    {
+        $parsedPath = (string) parse_url($url, PHP_URL_PATH);
+        $originalName = basename($parsedPath) ?: ('media-' . Str::lower(Str::uuid()->toString()));
+        $extension = strtolower((string) pathinfo($originalName, PATHINFO_EXTENSION)) ?: 'bin';
+        $title = $options['title'] ?? pathinfo($originalName, PATHINFO_FILENAME);
+        $mediaType = $this->determineMediaTypeFromExtension($extension);
+        $mimeType = $this->mimeTypeFromExtension($extension, $mediaType);
+        $externalPath = 'external/' . Str::lower(Str::uuid()->toString()) . '.' . $extension;
+
+        $asset = MediaAsset::create([
+            'original_name' => $originalName,
+            'title' => $title ?: $originalName,
+            'media_type' => $mediaType,
+            'status' => $options['status'] ?? 'active',
+            'disk' => 'external',
+            'directory' => 'external',
+            'file_name' => $originalName,
+            'path' => $externalPath,
+            'url' => $url,
+            'source_extension' => $extension,
+            'source_mime_type' => $mimeType,
+            'converted_extension' => $extension,
+            'converted_mime_type' => $mimeType,
+            'size_bytes' => 0,
+            'width' => null,
+            'height' => null,
+            'duration_seconds' => null,
+            'processing_status' => 'ready',
+            'metadata' => ($options['metadata'] ?? []) ?: null,
+            'created_by' => $uploadedBy,
+        ]);
+
+        $asset->update([
+            'media_code' => 'MC-' . str_pad((string) $asset->id, 3, '0', STR_PAD_LEFT),
+        ]);
+
+        return $asset->fresh();
+    }
+
     protected function determineMediaType(UploadedFile $file): string
     {
         $mimeType = (string) $file->getMimeType();
@@ -227,6 +279,43 @@ class MediaUploadService
         }
 
         return 'file';
+    }
+
+    protected function determineMediaTypeFromExtension(string $extension): string
+    {
+        return match ($extension) {
+            'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg' => 'image',
+            'mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v' => 'video',
+            'mp3', 'wav', 'aac', 'm4a', 'ogg', 'flac' => 'audio',
+            'pdf' => 'pdf',
+            default => 'file',
+        };
+    }
+
+    protected function mimeTypeFromExtension(string $extension, string $mediaType): ?string
+    {
+        return match ($extension) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'bmp' => 'image/bmp',
+            'svg' => 'image/svg+xml',
+            'mp4' => 'video/mp4',
+            'webm' => 'video/webm',
+            'mov' => 'video/quicktime',
+            'avi' => 'video/x-msvideo',
+            'mkv' => 'video/x-matroska',
+            'm4v' => 'video/x-m4v',
+            'mp3' => 'audio/mpeg',
+            'wav' => 'audio/wav',
+            'aac' => 'audio/aac',
+            'm4a' => 'audio/mp4',
+            'ogg' => 'audio/ogg',
+            'flac' => 'audio/flac',
+            'pdf' => 'application/pdf',
+            default => $mediaType === 'file' ? 'application/octet-stream' : null,
+        };
     }
 
     protected function mimeToExtension(string $mimeType): ?string
