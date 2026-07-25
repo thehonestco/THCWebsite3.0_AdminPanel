@@ -7,7 +7,6 @@ use App\Http\Requests\Api\ListResourceRequest;
 use App\Http\Requests\Api\StoreResourceRequest;
 use App\Models\Resource;
 use App\Services\Media\MediaUploadService;
-use App\Services\Resources\ResourcePayloadImageService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
@@ -82,8 +81,7 @@ class ResourceController extends Controller
 
     public function store(
         StoreResourceRequest $request,
-        MediaUploadService $mediaUploadService,
-        ResourcePayloadImageService $resourcePayloadImageService
+        MediaUploadService $mediaUploadService
     ): JsonResponse
     {
         $storedPaths = [];
@@ -92,7 +90,6 @@ class ResourceController extends Controller
             return DB::transaction(function () use (
                 $request,
                 $mediaUploadService,
-                $resourcePayloadImageService,
                 &$storedPaths
             ) {
                 $mediaAsset = null;
@@ -113,16 +110,6 @@ class ResourceController extends Controller
                     );
                 }
 
-                $resourcePayload = $resourcePayloadImageService->replaceBase64ImagesWithUrls(
-                    $request->validated('resource_payload'),
-                    auth()->id(),
-                    [
-                        'status' => 'active',
-                        'title' => $request->validated('listing_title'),
-                    ],
-                    $storedPaths
-                );
-
                 $resource = Resource::create([
                     'resource_type' => $request->validated('resource_type'),
                     'sub_industry' => $request->validated('sub_industry'),
@@ -132,7 +119,7 @@ class ResourceController extends Controller
                     'listing_image_url' => $mediaAsset?->url,
                     'listing_image_media_id' => $mediaAsset?->id,
                     'status' => $request->validated('status', 'draft'),
-                    'resource_payload' => $resourcePayload,
+                    'resource_payload' => $request->validated('resource_payload'),
                     'created_by' => auth()->id(),
                     'updated_by' => auth()->id(),
                 ]);
@@ -170,8 +157,7 @@ class ResourceController extends Controller
     public function update(
         StoreResourceRequest $request,
         int $id,
-        MediaUploadService $mediaUploadService,
-        ResourcePayloadImageService $resourcePayloadImageService
+        MediaUploadService $mediaUploadService
     ): JsonResponse
     {
         $resource = Resource::find($id);
@@ -190,7 +176,6 @@ class ResourceController extends Controller
                 $request,
                 $resource,
                 $mediaUploadService,
-                $resourcePayloadImageService,
                 &$storedPaths
             ) {
                 $mediaAsset = $resource->listingImage;
@@ -212,15 +197,7 @@ class ResourceController extends Controller
                 }
 
                 $resourcePayload = $request->exists('resource_payload')
-                    ? $resourcePayloadImageService->replaceBase64ImagesWithUrls(
-                        $request->validated('resource_payload'),
-                        auth()->id(),
-                        [
-                            'status' => 'active',
-                            'title' => $request->validated('listing_title', $resource->listing_title),
-                        ],
-                        $storedPaths
-                    )
+                    ? $request->validated('resource_payload')
                     : $resource->resource_payload;
 
                 $resource->update([

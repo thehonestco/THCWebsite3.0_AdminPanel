@@ -668,7 +668,7 @@ $collection['item'][] = [
             ]),
         ]),
         requestItem('Create Resource With Payload Base64 Image', 'POST', 'resources', [
-            'description' => 'Example for payload images sent from frontend as base64. Backend will convert every data:image/...;base64,... string inside resource_payload to a stored WebP URL.',
+            'description' => 'Example showing resource_payload saved exactly as received (including base64 image strings, if present) — no server-side conversion is applied.',
             'body' => formDataBody([
                 ['key' => 'resource_type', 'value' => 'our-work'],
                 ['key' => 'sub_industry[]', 'value' => 'sub-cat-a'],
@@ -742,7 +742,7 @@ $collection['item'][] = [
             ]),
         ]),
         requestItem('Update Resource With Payload Base64 Image', 'POST', 'resources/{{resource_id}}', [
-            'description' => 'Use this to test replacing payload base64 images on update. Base64 images will be stored on bucket and the saved payload/response will contain final URLs.',
+            'description' => 'Use this to confirm resource_payload is saved exactly as received on update — no base64-to-URL conversion is performed.',
             'body' => formDataBody([
                 ['key' => 'resource_type', 'value' => 'our-work'],
                 ['key' => 'sub_industry[]', 'value' => 'sub-cat-b'],
@@ -766,7 +766,7 @@ $collection['item'][] = [
                             'type' => 'edge',
                             'content' => [
                                 'title' => 'The Honest Edge',
-                                'description1' => 'This base64 image should be converted and replaced with URL.',
+                                'description1' => 'This base64 image is saved as-is, unconverted.',
                                 'description2' => 'Description 2',
                                 'image' => '{{resource_payload_base64_image}}',
                             ],

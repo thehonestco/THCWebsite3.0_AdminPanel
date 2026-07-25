@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Api;
 
-use App\Models\MediaAsset;
 use App\Models\Role;
 use App\Models\Resource;
 use App\Models\User;
@@ -107,7 +106,7 @@ class ResourceControllerTest extends TestCase
             ->assertJsonPath('data.resource_payload.resourceType', 'articles');
     }
 
-    public function test_authenticated_user_can_create_resource_and_convert_payload_base64_images_to_urls(): void
+    public function test_authenticated_user_can_create_resource_and_payload_is_saved_exactly_as_received(): void
     {
         Storage::fake('s3');
 
@@ -116,8 +115,8 @@ class ResourceControllerTest extends TestCase
 
         $response = $this->actingAs($user, 'sanctum')->postJson('/api/resources', [
             'resource_type' => 'our-work',
-            'sub_industry' => ['sub-cat-a', 'sub-cat-b'],
-            'sub_service' => ['sub-menu-a', 'sub-menu-b'],
+            'sub_industry' => ['Accounting and Ledgers', 'Insurance'],
+            'sub_service' => ['Interactive Design & Animation', 'UX/UI Design & Development'],
             'listing_title' => 'Sarvasa Capital',
             'listing_description' => 'hola test',
             'status' => 'published',
@@ -149,31 +148,19 @@ class ResourceControllerTest extends TestCase
 
         $resource = Resource::firstOrFail();
         $payload = $resource->resource_payload;
-        $firstImageUrl = $payload['sections'][0]['content']['image'];
-        $secondImageUrl = $payload['sections'][1]['content']['leftImage'];
 
-        $this->assertNotSame($base64Image, $firstImageUrl);
-        $this->assertNotSame($base64Image, $secondImageUrl);
-        $this->assertStringContainsString('.webp', $firstImageUrl);
-        $this->assertStringContainsString('.webp', $secondImageUrl);
-        $this->assertSame(['sub-cat-a', 'sub-cat-b'], $resource->sub_industry);
-        $this->assertSame(['sub-menu-a', 'sub-menu-b'], $resource->sub_service);
-        $response->assertJsonPath('data.sub_industry.1', 'sub-cat-b');
-        $response->assertJsonPath('data.sub_industry_labels.1', 'SubCat B');
-        $response->assertJsonPath('data.sub_service.1', 'sub-menu-b');
-        $response->assertJsonPath('data.sub_service_labels.1', 'SubMenu B');
-        $this->assertSame($firstImageUrl, $response->json('data.resource_payload.sections.0.content.image'));
-        $this->assertSame($secondImageUrl, $response->json('data.resource_payload.sections.1.content.leftImage'));
-        $this->assertDatabaseCount('media_assets', 2);
-
-        MediaAsset::all()->each(function (MediaAsset $asset): void {
-            $this->assertSame('image', $asset->media_type);
-            $this->assertSame('webp', $asset->converted_extension);
-            Storage::disk('s3')->assertExists($asset->path);
-        });
+        $this->assertSame($base64Image, $payload['sections'][0]['content']['image']);
+        $this->assertSame($base64Image, $payload['sections'][1]['content']['leftImage']);
+        $this->assertSame(['Accounting and Ledgers', 'Insurance'], $resource->sub_industry);
+        $this->assertSame(['Interactive Design & Animation', 'UX/UI Design & Development'], $resource->sub_service);
+        $response->assertJsonPath('data.sub_industry.1', 'Insurance');
+        $response->assertJsonPath('data.sub_service.1', 'UX/UI Design & Development');
+        $this->assertSame($base64Image, $response->json('data.resource_payload.sections.0.content.image'));
+        $this->assertSame($base64Image, $response->json('data.resource_payload.sections.1.content.leftImage'));
+        $this->assertDatabaseCount('media_assets', 0);
     }
 
-    public function test_authenticated_user_can_update_resource_and_replace_payload_base64_images_with_urls(): void
+    public function test_authenticated_user_can_update_resource_and_payload_is_saved_exactly_as_received(): void
     {
         Storage::fake('s3');
 
@@ -202,8 +189,8 @@ class ResourceControllerTest extends TestCase
         $base64Image = $this->samplePngDataUri();
 
         $response = $this->actingAs($user, 'sanctum')->putJson('/api/resources/' . $resource->id, [
-            'sub_industry' => ['sub-cat-b'],
-            'sub_service' => ['sub-menu-a', 'sub-menu-b'],
+            'sub_industry' => ['Agriculture'],
+            'sub_service' => ['Usability Testing & Experience', 'UX/UI Design & Development'],
             'resource_payload' => [
                 'resourceType' => 'our-work',
                 'sections' => [
@@ -231,20 +218,15 @@ class ResourceControllerTest extends TestCase
 
         $resource->refresh();
 
-        $updatedImageUrl = $resource->resource_payload['sections'][0]['content']['image'];
-        $edgeImageUrl = $resource->resource_payload['sections'][1]['content']['image'];
-
-        $this->assertStringContainsString('.webp', $updatedImageUrl);
-        $this->assertStringContainsString('.webp', $edgeImageUrl);
-        $this->assertSame(['sub-cat-b'], $resource->sub_industry);
-        $this->assertSame(['sub-menu-a', 'sub-menu-b'], $resource->sub_service);
-        $response->assertJsonPath('data.sub_industry.0', 'sub-cat-b');
-        $response->assertJsonPath('data.sub_industry_labels.0', 'SubCat B');
-        $response->assertJsonPath('data.sub_service.1', 'sub-menu-b');
-        $response->assertJsonPath('data.sub_service_labels.1', 'SubMenu B');
-        $this->assertSame($updatedImageUrl, $response->json('data.resource_payload.sections.0.content.image'));
-        $this->assertSame($edgeImageUrl, $response->json('data.resource_payload.sections.1.content.image'));
-        $this->assertDatabaseCount('media_assets', 2);
+        $this->assertSame($base64Image, $resource->resource_payload['sections'][0]['content']['image']);
+        $this->assertSame($base64Image, $resource->resource_payload['sections'][1]['content']['image']);
+        $this->assertSame(['Agriculture'], $resource->sub_industry);
+        $this->assertSame(['Usability Testing & Experience', 'UX/UI Design & Development'], $resource->sub_service);
+        $response->assertJsonPath('data.sub_industry.0', 'Agriculture');
+        $response->assertJsonPath('data.sub_service.1', 'UX/UI Design & Development');
+        $this->assertSame($base64Image, $response->json('data.resource_payload.sections.0.content.image'));
+        $this->assertSame($base64Image, $response->json('data.resource_payload.sections.1.content.image'));
+        $this->assertDatabaseCount('media_assets', 0);
     }
 
     protected function createSuperAdminUser(): User
