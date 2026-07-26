@@ -17,4 +17,18 @@ return [
         'audio_bitrate' => env('MEDIA_VIDEO_AUDIO_BITRATE', '96k'),
         'timeout_seconds' => (int) env('MEDIA_VIDEO_TIMEOUT_SECONDS', 300),
     ],
+
+    'presign' => [
+        'expiry_minutes' => (int) env('MEDIA_PRESIGN_EXPIRY_MINUTES', 5),
+        'directory' => env('MEDIA_PRESIGN_DIRECTORY', 'uploads'),
+        'allowed_mime_types' => [
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml',
+            'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska',
+            'audio/mpeg', 'audio/wav', 'audio/aac', 'audio/mp4', 'audio/ogg', 'audio/flac',
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/zip',
+        ],
+    ],
 ];

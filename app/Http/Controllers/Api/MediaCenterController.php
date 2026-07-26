@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\MediaProcessingException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\ConfirmMediaRequest;
 use App\Http\Requests\Api\ListMediaAssetRequest;
+use App\Http\Requests\Api\PresignMediaRequest;
 use App\Http\Requests\Api\StoreMediaAssetRequest;
+use App\Jobs\ProcessMediaJob;
 use App\Models\MediaAsset;
+use App\Services\Media\MediaPresignService;
 use App\Services\Media\MediaUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
@@ -100,6 +104,59 @@ class MediaCenterController extends Controller
                 'message' => $exception->getMessage(),
             ], $exception->status());
         }
+    }
+
+    public function presignBatch(PresignMediaRequest $request, MediaPresignService $mediaPresignService): JsonResponse
+    {
+        $results = collect($request->validated('files'))->map(
+            fn (array $file) => $mediaPresignService->generate($file['filename'], $file['mime_type'])
+        )->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $results,
+        ]);
+    }
+
+    public function confirm(ConfirmMediaRequest $request, MediaUploadService $mediaUploadService): JsonResponse
+    {
+        $results = collect($request->validated('files'))->map(function (array $file) use ($mediaUploadService) {
+            try {
+                $mediaAsset = $mediaUploadService->createPendingFromKey(
+                    $file['key'],
+                    $file['mime_type'],
+                    $file['original_filename'] ?? null,
+                    auth()->id(),
+                    [
+                        'status' => 'active',
+                        'metadata' => [
+                            'module' => 'media-center',
+                        ],
+                    ]
+                );
+
+                if ($mediaAsset->processing_status === 'processing') {
+                    ProcessMediaJob::dispatch($mediaAsset->id);
+                }
+
+                return [
+                    'key' => $file['key'],
+                    'status' => 'ok',
+                    'data' => $this->transformMediaAsset($mediaAsset),
+                ];
+            } catch (MediaProcessingException $exception) {
+                return [
+                    'key' => $file['key'],
+                    'status' => 'error',
+                    'message' => $exception->getMessage(),
+                ];
+            }
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $results,
+        ]);
     }
 
     public function show(int $id): JsonResponse

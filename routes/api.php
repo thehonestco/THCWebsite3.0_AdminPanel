@@ -394,6 +394,16 @@ Route::middleware('auth:sanctum')->group(function () {
         [MediaCenterController::class, 'store']
     )->middleware('perm:bottom-menu.media-center.add');
 
+    Route::post(
+        '/media/presign-batch',
+        [MediaCenterController::class, 'presignBatch']
+    )->middleware('perm:bottom-menu.media-center.add');
+
+    Route::post(
+        '/media/confirm',
+        [MediaCenterController::class, 'confirm']
+    )->middleware('perm:bottom-menu.media-center.add');
+
     Route::get(
         '/media-center/{id}',
         [MediaCenterController::class, 'show']

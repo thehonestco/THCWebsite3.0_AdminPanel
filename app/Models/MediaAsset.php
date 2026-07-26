@@ -20,6 +20,7 @@ class MediaAsset extends Model
         'directory',
         'file_name',
         'path',
+        'key',
         'url',
         'source_extension',
         'source_mime_type',
