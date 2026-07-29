@@ -12,6 +12,7 @@ return [
     ],
 
     'video' => [
+        'conversion_enabled' => (bool) env('MEDIA_VIDEO_CONVERSION_ENABLED', true),
         'ffmpeg_path' => env('MEDIA_FFMPEG_PATH', 'ffmpeg'),
         'crf' => (int) env('MEDIA_VIDEO_CRF', 32),
         'audio_bitrate' => env('MEDIA_VIDEO_AUDIO_BITRATE', '96k'),

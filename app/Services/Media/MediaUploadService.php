@@ -188,7 +188,11 @@ class MediaUploadService
         $directory = trim((string) dirname($key), '.') ?: '';
 
         $needsConversion = ($mediaType === 'image' && $mimeType !== 'image/webp')
-            || ($mediaType === 'video' && $mimeType !== 'video/webm');
+            || (
+                $mediaType === 'video'
+                && $mimeType !== 'video/webm'
+                && config('media.video.conversion_enabled', true)
+            );
 
         $asset = MediaAsset::create([
             'original_name' => $originalName,
