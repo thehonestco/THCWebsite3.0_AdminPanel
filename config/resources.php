@@ -3,6 +3,7 @@
 return [
     'types' => [
         'our-work' => 'Our Work',
+        'our-products' => 'Our Products',
         'articles' => 'Articles',
         'white-papers' => 'White Papers',
         'case-studies' => 'Case Studies',
