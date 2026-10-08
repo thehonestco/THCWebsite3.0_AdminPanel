@@ -81,13 +81,18 @@ class StoreResourceRequest extends FormRequest
             return null;
         }
 
-        $normalized = array_values(array_filter(array_map(function (mixed $item) {
+        // Multipart forms can send several selections as one comma-joined string.
+        $value = collect($value)
+            ->flatMap(fn (mixed $item) => is_string($item) ? explode(',', $item) : [$item])
+            ->all();
+
+        $normalized = array_values(array_unique(array_filter(array_map(function (mixed $item) {
             if (is_string($item)) {
                 $item = trim($item);
             }
 
             return $item === '' ? null : $item;
-        }, $value), fn (mixed $item) => $item !== null));
+        }, $value), fn (mixed $item) => $item !== null), SORT_REGULAR));
 
         return $normalized === [] ? null : $normalized;
     }

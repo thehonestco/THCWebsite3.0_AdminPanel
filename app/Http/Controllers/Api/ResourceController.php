@@ -264,16 +264,10 @@ class ResourceController extends Controller
             'id' => $resource->id,
             'category' => config('resources.types.' . $resource->resource_type, $resource->resource_type),
             'category_value' => $resource->resource_type,
-            'sub_industry' => $resource->sub_industry ?? [],
-            'sub_industry_labels' => collect($resource->sub_industry ?? [])
-                ->map(fn (string $value) => config('resources.sub_industries.' . $value, $value))
-                ->values()
-                ->all(),
-            'sub_service' => $resource->sub_service ?? [],
-            'sub_service_labels' => collect($resource->sub_service ?? [])
-                ->map(fn (string $value) => config('resources.sub_services.' . $value, $value))
-                ->values()
-                ->all(),
+            'sub_industry' => $this->normalizeSelections($resource->sub_industry),
+            'sub_industry_labels' => $this->selectionLabels($resource->sub_industry, 'sub_industries'),
+            'sub_service' => $this->normalizeSelections($resource->sub_service),
+            'sub_service_labels' => $this->selectionLabels($resource->sub_service, 'sub_services'),
             'title' => $resource->listing_title,
             'listing_description' => $resource->listing_description,
             'listing_image_url' => $resource->listing_image_url,
@@ -290,16 +284,10 @@ class ResourceController extends Controller
             'id' => $resource->id,
             'resource_type' => $resource->resource_type,
             'resource_type_label' => config('resources.types.' . $resource->resource_type, $resource->resource_type),
-            'sub_industry' => $resource->sub_industry ?? [],
-            'sub_industry_labels' => collect($resource->sub_industry ?? [])
-                ->map(fn (string $value) => config('resources.sub_industries.' . $value, $value))
-                ->values()
-                ->all(),
-            'sub_service' => $resource->sub_service ?? [],
-            'sub_service_labels' => collect($resource->sub_service ?? [])
-                ->map(fn (string $value) => config('resources.sub_services.' . $value, $value))
-                ->values()
-                ->all(),
+            'sub_industry' => $this->normalizeSelections($resource->sub_industry),
+            'sub_industry_labels' => $this->selectionLabels($resource->sub_industry, 'sub_industries'),
+            'sub_service' => $this->normalizeSelections($resource->sub_service),
+            'sub_service_labels' => $this->selectionLabels($resource->sub_service, 'sub_services'),
             'listing_title' => $resource->listing_title,
             'listing_description' => $resource->listing_description,
             'listing_image_url' => $resource->listing_image_url,
@@ -318,6 +306,29 @@ class ResourceController extends Controller
                 'name' => $resource->editor->name,
             ] : null,
         ];
+    }
+
+    /**
+     * Older records may hold several selections in one comma-joined string.
+     */
+    protected function normalizeSelections(?array $values): array
+    {
+        return collect($values ?? [])
+            ->flatMap(fn (mixed $value) => is_string($value) ? explode(',', $value) : [])
+            ->map(fn (string $value) => trim($value))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    protected function selectionLabels(?array $values, string $configKey): array
+    {
+        $options = config('resources.' . $configKey, []);
+
+        return collect($this->normalizeSelections($values))
+            ->map(fn (string $value) => $options[$value] ?? $value)
+            ->all();
     }
 
     protected function categoryOptions(): array
