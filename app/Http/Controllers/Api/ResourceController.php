@@ -37,7 +37,20 @@ class ResourceController extends Controller
 
     public function index(ListResourceRequest $request): JsonResponse
     {
+        // Exclude resource_payload: large JSON rows overflow MySQL's sort buffer on ORDER BY.
         $query = Resource::query()
+            ->select([
+                'id',
+                'resource_type',
+                'sub_industry',
+                'sub_service',
+                'listing_title',
+                'listing_description',
+                'listing_image_url',
+                'status',
+                'updated_by',
+                'updated_at',
+            ])
             ->with(['editor:id,name'])
             ->orderByDesc('updated_at')
             ->orderByDesc('id');
@@ -251,6 +264,16 @@ class ResourceController extends Controller
             'id' => $resource->id,
             'category' => config('resources.types.' . $resource->resource_type, $resource->resource_type),
             'category_value' => $resource->resource_type,
+            'sub_industry' => $resource->sub_industry ?? [],
+            'sub_industry_labels' => collect($resource->sub_industry ?? [])
+                ->map(fn (string $value) => config('resources.sub_industries.' . $value, $value))
+                ->values()
+                ->all(),
+            'sub_service' => $resource->sub_service ?? [],
+            'sub_service_labels' => collect($resource->sub_service ?? [])
+                ->map(fn (string $value) => config('resources.sub_services.' . $value, $value))
+                ->values()
+                ->all(),
             'title' => $resource->listing_title,
             'listing_description' => $resource->listing_description,
             'listing_image_url' => $resource->listing_image_url,
